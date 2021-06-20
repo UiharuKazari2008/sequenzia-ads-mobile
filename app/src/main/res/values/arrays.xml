@@ -1,5 +1,7 @@
 <resources>
     <string-array name="settingsRefreshTimeNames">
+        <item>5 minutes</item>
+        <item>10 minutes</item>
         <item>15 minutes</item>
         <item>30 minutes</item>
         <item>1 hour</item>
@@ -8,6 +10,8 @@
         <item>8 Hours</item>
     </string-array>
     <string-array name="settingsRefreshTimeValues">
+        <item>5</item>
+        <item>10</item>
         <item>15</item>
         <item>30</item>
         <item>60</item>
@@ -32,5 +36,35 @@
         <item>60</item>
         <item>90</item>
         <item>360</item>
+    </string-array>
+    <string-array name="settingsImageCountNames">
+        <item>Single</item>
+        <item>5 Images</item>
+        <item>10 Images</item>
+        <item>15 Images</item>
+        <item>30 Images</item>
+        <item>50 Images</item>
+        <item>100 Images</item>
+    </string-array>
+    <string-array name="settingsImageCountValues">
+        <item>1</item>
+        <item>5</item>
+        <item>10</item>
+        <item>15</item>
+        <item>30</item>
+        <item>50</item>
+        <item>100</item>
+    </string-array>
+    <string-array name="settingsWallpaperSelectionNames">
+        <item>Both</item>
+        <item>Wallpaper</item>
+        <item>Lockscreen</item>
+        <item>Alternate</item>
+    </string-array>
+    <string-array name="settingsWallpaperSelectionValues">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
     </string-array>
 </resources>

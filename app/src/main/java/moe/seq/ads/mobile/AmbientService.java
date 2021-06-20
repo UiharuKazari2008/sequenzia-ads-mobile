@@ -1,5 +1,6 @@
 package moe.seq.ads.mobile;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.Service;
 import android.content.Intent;
@@ -22,8 +23,9 @@ public class AmbientService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Toast.makeText(this, "ADS Service Stared", Toast.LENGTH_LONG).show();
-
         startForeground(9854, buildNotification());
+        MainActivity.alarmManager.setInexactRepeating(AlarmManager.RTC, 5000, MainActivity.interval, MainActivity.pendingIntent);
+        MainActivity.alarmManagerActive = true;
         return START_STICKY;
     }
 
@@ -41,7 +43,7 @@ public class AmbientService extends Service {
         Notification.Builder notification = new Notification.Builder(this, MainActivity.NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("Sequenzia")
-                .setContentTitle("Warming up!");
+                .setContentTitle("Please Wait...");
         return notification.build();
     }
 }

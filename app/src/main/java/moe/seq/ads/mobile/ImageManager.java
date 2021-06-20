@@ -2,11 +2,14 @@ package moe.seq.ads.mobile;
 
 import android.app.WallpaperManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
+import androidx.annotation.RequiresApi;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -25,14 +28,37 @@ public class ImageManager {
         void onResponse(Boolean completed);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public void setWallpaperImage (String fileName, ImageManagerResponse cb) {
+        SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
         WallpaperManager manager = WallpaperManager.getInstance(context);
 
         try {
             FileInputStream file = context.openFileInput(fileName);
             Bitmap bitmap = BitmapFactory.decodeStream(file);
             try {
-                manager.setBitmap(cropBitmapFromCenterAndScreenSize(bitmap));
+                int displaySelect = WallpaperManager.FLAG_SYSTEM + WallpaperManager.FLAG_LOCK;
+                if (MainActivity.wallSelection == 3) {
+                    final boolean lastSet = sharedPref.getBoolean("displayFlip", false);
+                    if (lastSet) {
+                        displaySelect = WallpaperManager.FLAG_LOCK;
+                    } else {
+                        displaySelect = WallpaperManager.FLAG_SYSTEM;
+                    }
+                    SharedPreferences.Editor prefsEditor = sharedPref.edit();
+                    prefsEditor.putBoolean("displayFlip", !lastSet);
+                    prefsEditor.apply();
+                } else if (MainActivity.wallSelection == 1) {
+                    displaySelect = WallpaperManager.FLAG_SYSTEM;
+                } else if (MainActivity.wallSelection == 2) {
+                    displaySelect = WallpaperManager.FLAG_LOCK;
+                }
+
+                if (MainActivity.centerImage) {
+                    manager.setBitmap(cropBitmapFromCenterAndScreenSize(bitmap), null, false, displaySelect);
+                } else {
+                    manager.setBitmap(bitmap, null, false, displaySelect);
+                }
                 cb.onResponse(true);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -58,15 +84,15 @@ public class ImageManager {
         screenWidth = display.getWidth();
         screenHeight = display.getHeight();
 
-        Log.i("TAG", "bitmap_width " + bitmap_width);
-        Log.i("TAG", "bitmap_height " + bitmap_height);
+        Log.v("TAG", "bitmap_width " + bitmap_width);
+        Log.v("TAG", "bitmap_height " + bitmap_height);
 
         float bitmap_ratio = (float) (bitmap_width / bitmap_height);
         float screen_ratio = (float) (screenWidth / screenHeight);
         int bitmapNewWidth, bitmapNewHeight;
 
-        Log.i("TAG", "bitmap_ratio " + bitmap_ratio);
-        Log.i("TAG", "screen_ratio " + screen_ratio);
+        Log.v("TAG", "bitmap_ratio " + bitmap_ratio);
+        Log.v("TAG", "screen_ratio " + screen_ratio);
 
         if (screen_ratio > bitmap_ratio) {
             bitmapNewWidth = (int) screenWidth;
@@ -79,17 +105,17 @@ public class ImageManager {
         bitmap = Bitmap.createScaledBitmap(bitmap, bitmapNewWidth,
                 bitmapNewHeight, true);
 
-        Log.i("TAG", "screenWidth " + screenWidth);
-        Log.i("TAG", "screenHeight " + screenHeight);
-        Log.i("TAG", "bitmapNewWidth " + bitmapNewWidth);
-        Log.i("TAG", "bitmapNewHeight " + bitmapNewHeight);
+        Log.v("TAG", "screenWidth " + screenWidth);
+        Log.v("TAG", "screenHeight " + screenHeight);
+        Log.v("TAG", "bitmapNewWidth " + bitmapNewWidth);
+        Log.v("TAG", "bitmapNewHeight " + bitmapNewHeight);
 
         int bitmapGapX, bitmapGapY;
         bitmapGapX = (int) ((bitmapNewWidth - screenWidth) / 2.0f);
         bitmapGapY = (int) ((bitmapNewHeight - screenHeight) / 2.0f);
 
-        Log.i("TAG", "bitmapGapX " + bitmapGapX);
-        Log.i("TAG", "bitmapGapY " + bitmapGapY);
+        Log.v("TAG", "bitmapGapX " + bitmapGapX);
+        Log.v("TAG", "bitmapGapY " + bitmapGapY);
 
         bitmap = Bitmap.createBitmap(bitmap, bitmapGapX, bitmapGapY, (int) screenWidth, (int) screenHeight);
         return bitmap;

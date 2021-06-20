@@ -19,6 +19,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
     @Override
     public void onReceive (Context context , Intent intent) {
         AmbientDataManager ambientDataManager = new AmbientDataManager(context);
+
         final String[] calledActions = intent.getAction().split(":",2);
         final String action = calledActions[0];
         int index = -1;
@@ -27,23 +28,24 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
 
         switch (action) {
             case "NEXT_IMAGE":
-                Toast.makeText(context, "Getting Next Iamge...", Toast.LENGTH_SHORT).show();
+                ambientDataManager.nextImage(true);
+                break;
+            case "REFRESH_IMAGES":
+                Toast.makeText(context, "Getting More Image...", Toast.LENGTH_SHORT).show();
                 ambientDataManager.ambientRefresh(new AmbientDataManager.AmbientRefreshResponse() {
                     @Override
                     public void onError(String message) {
-                        Toast.makeText(context, "AmbientManager Failure", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, String.format("AmbientDataManager Failure: %s", message), Toast.LENGTH_SHORT).show();
                     }
 
                     @Override
                     public void onResponse(Boolean completed) {
-
+                        Toast.makeText(context, "Downloaded New Images!", Toast.LENGTH_SHORT).show();
                     }
                 });
                 break;
             case "FAV_IMAGE":
-                if (index != -1) {
-                    ambientDataManager.ambientFavorite(index);
-                }
+                if (index != -1) { ambientDataManager.ambientFavorite(index); }
                 break;
             case "OPEN_IMAGE":
                 if (index != -1) {
@@ -54,17 +56,18 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                         try {
                             imageObject = new Gson().fromJson(responseData, JsonObject.class).getAsJsonObject("nameValuePairs");
                         } catch (JsonIOException e) {
-                            e.printStackTrace();
+                            Toast.makeText(context, String.format("Unable to get data: %s", e), Toast.LENGTH_SHORT).show();
                         }
                         try {
-                            Log.w("FindElement", responseData);
                             assert imageObject != null;
-                            String messageId = imageObject.get("fileId").getAsString();
-                            Uri fileURL = Uri.parse(String.format("%s/gallery?search=id:st:%s", AmbientDataManager.SEQUENZIA_HOST, messageId.substring(0,6)));
+                            String messageId = imageObject.get("fileEid").getAsString();
+                            Uri fileURL = Uri.parse(String.format("https://%s/gallery?search=eid:%s", MainActivity.serverName, messageId));
                             context.startActivity(new Intent(Intent.ACTION_VIEW, fileURL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                        } catch (JsonIOException e) {
-                            e.printStackTrace();
+                        } catch (Exception e) {
+                            Toast.makeText(context, String.format("Failed to open: %s", e), Toast.LENGTH_SHORT).show();
                         }
+                    } else {
+                        Toast.makeText(context, "Data not found", Toast.LENGTH_SHORT).show();
                     }
                 }
                 break;

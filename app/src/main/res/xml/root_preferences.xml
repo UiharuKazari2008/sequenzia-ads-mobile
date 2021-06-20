@@ -11,8 +11,21 @@
                 android:entries="@array/settingsRefreshTimeNames"
                 android:entryValues="@array/settingsRefreshTimeValues"
                 android:key="ltCycleTime"
+                android:defaultValue="60"
                 android:summary="Time between wallpaper changes"
                 android:title="Cycle Time" />
+        <ListPreference
+                android:dialogTitle="Screen Selection"
+                android:entries="@array/settingsWallpaperSelectionNames"
+                android:entryValues="@array/settingsWallpaperSelectionValues"
+                android:key="ltWallSelection"
+                android:summary="Select what wallpapers to change, Wallpaper and or Lockscreen"
+                android:defaultValue="0"
+                android:title="Wallpapers to Modify" />
+        <SwitchPreference
+                android:defaultValue="true"
+                android:title="Enable History" android:key="swHistory"
+                android:summary="Sends Displayed Images to Ambient Display History"/>
     </PreferenceCategory>
     <PreferenceCategory
             android:title="Request Options">
@@ -28,12 +41,26 @@
                 android:singleLine="true"
                 android:title="Device Name" android:key="etDisplayName"
                 android:summary="Name that will display in history"/>
+        <ListPreference
+                android:dialogTitle="Image Count"
+                android:entries="@array/settingsImageCountNames"
+                android:entryValues="@array/settingsImageCountValues"
+                android:key="ltImageCount"
+                android:summary="Download these many images for offline access"
+                android:defaultValue="5"
+                android:title="Number of Images" />
         <EditTextPreference
-                android:defaultValue="art:*"
+                android:defaultValue=""
                 android:selectAllOnFocus="true"
                 android:singleLine="true"
                 android:title="Folder" android:key="etFolder"
                 android:summary="Folders to go search (Example: art:*) or leave empty"/>
+        <EditTextPreference
+                android:defaultValue=""
+                android:selectAllOnFocus="true"
+                android:singleLine="true"
+                android:title="Search" android:key="etSearch"
+                android:summary="Search query to use (Supports AND and OR) or leave empty"/>
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Only Favorites" android:key="swPins"
@@ -43,6 +70,7 @@
                 android:entries="@array/settingsMaxAgeNames"
                 android:entryValues="@array/settingsMaxAgeValues"
                 android:key="ltMaxAge"
+                android:defaultValue="0"
                 android:summary="Only return images within these days"
                 android:title="Max Age" />
         <SwitchPreference
