@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity"
+    tools:ignore="HardcodedText">
+
+    <!--layout to bound the width and height of the wallpaper preview-->
+
+    <!--button which sets the image as wallpaper-->
+
+    <ImageView
+        android:id="@+id/logoImage"
+        android:layout_width="380dp"
+        android:layout_height="83dp"
+        android:layout_marginTop="32dp"
+        app:layout_constraintBottom_toTopOf="@+id/codeHolder"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/logo" />
+
+    <TextView
+            android:id="@+id/codeHolder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:fontFamily="monospace"
+            android:text="......"
+            android:textAlignment="center"
+            android:textSize="60sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/logoImage"
+            tools:layout_editor_absoluteX="0dp"/>
+
+    <Button
+            android:id="@+id/loginButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/codeHolder"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="64dp"
+            android:layout_marginEnd="24dp"
+            android:text="Login"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/codeHolder" android:enabled="false"/>
+
+    <TextView
+            android:id="@+id/errorText"
+            android:layout_width="match_parent"
+            android:layout_height="48pt"
+            android:layout_alignBottom="@+id/loginButton"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:textAlignment="center"
+            android:textColor="#FF0000"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/startRefreshTimer" app:layout_constraintHorizontal_bias="0.0"
+            android:layout_marginTop="16dp"/>
+    <Button
+        android:id="@+id/logoutButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="24dp"
+        android:text="Logout"
+        app:backgroundTint="#E91E63"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+    <Button
+            android:text="Enable"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content" android:id="@+id/startRefreshTimer"
+            app:layout_constraintTop_toBottomOf="@+id/loginButton" app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="24dp" android:layout_marginTop="8dp"
+            app:layout_constraintEnd_toStartOf="@+id/disableRefreshTimer" android:layout_marginEnd="8dp"
+            android:enabled="false" android:onClick="startAlarm"/>
+    <Button
+            android:text="Disable"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:id="@+id/disableRefreshTimer"
+            app:layout_constraintTop_toBottomOf="@+id/loginButton"
+            app:layout_constraintStart_toEndOf="@+id/startRefreshTimer"
+            app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="24dp" android:layout_marginTop="8dp"
+            app:backgroundTint="#E91E63" android:onClick="cancelAlarm"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
