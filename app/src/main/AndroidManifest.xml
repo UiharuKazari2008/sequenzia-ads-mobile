@@ -14,6 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ADSMobile">
         <activity android:name=".ConfigActivity"/>
+        <service android:name = ".AmbientService"/>
 
         <activity android:name=".MainActivity">
             <intent-filter>
