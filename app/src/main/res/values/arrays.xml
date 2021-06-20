@@ -1,0 +1,36 @@
+<resources>
+    <string-array name="settingsRefreshTimeNames">
+        <item>15 minutes</item>
+        <item>30 minutes</item>
+        <item>1 hour</item>
+        <item>3 hours</item>
+        <item>6 hours</item>
+        <item>8 Hours</item>
+    </string-array>
+    <string-array name="settingsRefreshTimeValues">
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+        <item>180</item>
+        <item>360</item>
+        <item>480</item>
+    </string-array>
+    <string-array name="settingsMaxAgeNames">
+        <item>No Limit</item>
+        <item>Last 3 Days</item>
+        <item>Last Week</item>
+        <item>Last 30 Days</item>
+        <item>Last 60 Days</item>
+        <item>Last 90 Days</item>
+        <item>This Year</item>
+    </string-array>
+    <string-array name="settingsMaxAgeValues">
+        <item>0</item>
+        <item>3</item>
+        <item>7</item>
+        <item>30</item>
+        <item>60</item>
+        <item>90</item>
+        <item>360</item>
+    </string-array>
+</resources>

@@ -1,0 +1,62 @@
+<PreferenceScreen
+        xmlns:tools="http://schemas.android.com/tools" xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="Service" >
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Enable Service at Boot" android:key="swOnBoot"
+                android:summary="Start ADS when phone is restarted"/>
+        <ListPreference
+                android:dialogTitle="Cycle Time"
+                android:entries="@array/settingsRefreshTimeNames"
+                android:entryValues="@array/settingsRefreshTimeValues"
+                android:key="ltCycleTime"
+                android:summary="Time between wallpaper changes"
+                android:title="Cycle Time" />
+    </PreferenceCategory>
+    <PreferenceCategory
+            android:title="Request Options">
+        <EditTextPreference
+                android:defaultValue="beta.seq.moe"
+                android:selectAllOnFocus="true"
+                android:singleLine="true"
+                android:title="Server" android:key="etServerName"
+                android:summary="Hostname of the Sequenzia Server (Public or Private)"/>
+        <EditTextPreference
+                android:defaultValue="Untitled"
+                android:selectAllOnFocus="true"
+                android:singleLine="true"
+                android:title="Device Name" android:key="etDisplayName"
+                android:summary="Name that will display in history"/>
+        <EditTextPreference
+                android:defaultValue="art:*"
+                android:selectAllOnFocus="true"
+                android:singleLine="true"
+                android:title="Folder" android:key="etFolder"
+                android:summary="Folders to go search (Example: art:*) or leave empty"/>
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Only Favorites" android:key="swPins"
+                android:summary="Only returns images you have favoured"/>
+        <ListPreference
+                android:dialogTitle="Max Age"
+                android:entries="@array/settingsMaxAgeNames"
+                android:entryValues="@array/settingsMaxAgeValues"
+                android:key="ltMaxAge"
+                android:summary="Only return images within these days"
+                android:title="Max Age" />
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Bypass Ratio Enforcement" android:key="swRatio"
+                android:summary="Ensures that only portrait images are returned"/>
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Bypass Post-Processing" android:key="swCenter"
+                android:summary="Ensures that images are always centered"/>
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Show NSFW Images" android:key="swNSFW"
+                android:summary="Allow NSFW Images to be returned"/>
+
+    </PreferenceCategory>
+</PreferenceScreen>
