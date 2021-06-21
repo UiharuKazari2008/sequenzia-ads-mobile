@@ -6,6 +6,8 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.PowerManager;
 import android.util.Log;
@@ -23,6 +25,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
@@ -87,6 +90,11 @@ public class AmbientDataManager {
                                 final String previewImageURL = singleImage.getString("previewImage");
                                 final String fileName = String.format("adi-%s", i);
                                 final String previewName = String.format("adp-%s", i);
+                                final int imageColor = android.graphics.Color.rgb(
+                                        Integer.parseInt(singleImage.getString("colorR")),
+                                        Integer.parseInt(singleImage.getString("colorG")),
+                                        Integer.parseInt(singleImage.getString("colorB")));
+                                Log.i("Test", String.format("Color: %s", imageColor));
                                 dataImage.put("fileName", fileName);
                                 dataImage.put("fileUrl", fullImageURL);
                                 dataImage.put("filePreviewUrl", previewImageURL);
@@ -96,6 +104,7 @@ public class AmbientDataManager {
                                 dataImage.put("fileEid", singleImage.getInt("eid"));
                                 dataImage.put("fileId", singleImage.getInt("id"));
                                 dataImage.put("fileChannelId", singleImage.getString("channelId"));
+                                dataImage.put("fileColor", imageColor);
                                 dataImage.put("location", String.format("%s:/%s/%s",
                                         singleImage.getString("serverName").toUpperCase(),
                                         singleImage.getString("className"),
@@ -131,7 +140,7 @@ public class AmbientDataManager {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void nextImage(Boolean firstTry) {
-        //if (isDisplayOn()) {
+        if (isDisplayOn()) {
             MainActivity.refreshSettings();
             SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
             int nextImageIndex = sharedPref.getInt("lastImageIndex", -1) + 1;
@@ -180,9 +189,11 @@ public class AmbientDataManager {
                     }
                 });
             }
-        //} else {
-        //    Log.i("NextImage", "Ignored, Display Is Off");
-        //}
+        } else {
+            Log.i("NextImage", "Ignored, Wait till next wake up");
+            MainActivity.stopTimer();
+            MainActivity.pendingIntentActive = true;
+        }
     }
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void setImage(@org.jetbrains.annotations.NotNull JsonObject imageObject, int nextImageIndex) {
@@ -423,33 +434,53 @@ public class AmbientDataManager {
         }
         assert imageObject != null;
 
+        if (imageObject != null) {
+            PendingIntent nextImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction("NEXT_IMAGE"), 0);
+            PendingIntent openImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("OPEN_IMAGE:%s", index)), 0);
+            PendingIntent favImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("FAV_IMAGE:%s", index)), 0);
+            PendingIntent pauseImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction("TOGGLE_TIMER"), 0);
 
-        PendingIntent nextImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction("NEXT_IMAGE"), 0);
-        PendingIntent openImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("OPEN_IMAGE:%s", index)), 0);
-        PendingIntent favImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("FAV_IMAGE:%s", index)), 0);
-        PendingIntent pauseImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction("TOGGLE_TIMER"), 0);
+            final String notificationText = String.format("%s - %s", imageObject.get("location").getAsString(), imageObject.get("fileDate").getAsString());
 
-        final String notificationText = String.format("%s - %s", imageObject.get("location").getAsString(), imageObject.get("fileDate").getAsString());
+            Notification.Builder notification = new Notification.Builder(context, MainActivity.NOTIFICATION_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setVisibility(Notification.VISIBILITY_PUBLIC)
+                    .setTicker(notificationText)
+                    .setContentTitle(notificationText)
+                    .setContentIntent(openImageIntent);
+            final String notificationContents = imageObject.get("fileContents").getAsString();
+            if (notificationContents.length() >= 5) {
+                notification.setContentText(notificationContents);
+            }
+            if (MainActivity.alarmManagerActive) {
+                notification.addAction(R.drawable.ic_pause, "Pause", pauseImageIntent);
+            } else {
+                notification.addAction(R.drawable.ic_play, "Resume", pauseImageIntent);
+            }
+            notification.addAction(R.drawable.ic_next, "Next", nextImageIntent);
+            int buttonIntentId = 1;
+            if (!imageObject.get("fileFav").getAsBoolean()) {
+                notification.addAction(R.drawable.ic_fav, "Favorite", favImageIntent);
+                buttonIntentId = 2;
+            }
+            try {
+                final String fileName = imageObject.get("fileName").getAsString();
+                FileInputStream file = context.openFileInput(fileName);
+                Bitmap bitmap = BitmapFactory.decodeStream(file);
+                notification.setLargeIcon(bitmap);
+                if (imageObject.has("fileColor")) {
+                    final int color = imageObject.get("fileColor").getAsInt();
+                    notification.setColor(color);
+                    notification.setColorized(true);
+                }
+            } catch (Exception e) {
+                Log.e("NotifiManager", String.format("Failed to load bitmap for notification: %s", e));
+            }
+            notification.setStyle(new Notification.MediaStyle().setShowActionsInCompactView(buttonIntentId));
+            manager.notify(9854, notification.build());
 
-        Notification.Builder notification = new Notification.Builder(context, MainActivity.NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setTicker(notificationText)
-                .setContentTitle(notificationText)
-                .setContentIntent(openImageIntent);
-        final String notificationContents = imageObject.get("fileContents").getAsString();
-        if (notificationContents.length() >= 5) {
-            notification.setContentText(notificationContents);
+            lastNotificationIndex = index;
         }
-        notification.addAction(R.drawable.ic_launcher_foreground, "Next", nextImageIntent);
-        String alarmAction = "Resume";
-        if (MainActivity.alarmManagerActive) { alarmAction = "Pause"; }
-        notification.addAction(R.drawable.ic_launcher_foreground, alarmAction, pauseImageIntent);
-        if (!imageObject.get("fileFav").getAsBoolean()) {
-            notification.addAction(R.drawable.ic_launcher_foreground, "Favorite", favImageIntent);
-        }
-        manager.notify(9854, notification.build());
-
-        lastNotificationIndex = index;
     }
 
     private Boolean isDisplayOn() {

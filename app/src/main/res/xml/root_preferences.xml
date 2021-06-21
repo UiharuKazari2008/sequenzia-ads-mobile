@@ -79,8 +79,8 @@
                 android:summary="Ensures that only portrait images are returned"/>
         <SwitchPreference
                 android:defaultValue="false"
-                android:title="Bypass Post-Processing" android:key="swCenter"
-                android:summary="Ensures that images are always centered"/>
+                android:title="Force Center Alignment" android:key="swCenter"
+                android:summary="Ensures that images are always centered (Depends on your launcher, only use if images are pushed into the corner)"/>
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Show NSFW Images" android:key="swNSFW"

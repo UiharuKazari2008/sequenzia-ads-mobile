@@ -3,7 +3,9 @@ package moe.seq.ads.mobile;
 import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.IBinder;
 import android.widget.Toast;
@@ -19,6 +21,9 @@ public class AmbientService extends Service {
         super.onCreate();
     }
 
+    BroadcastReceiver ambientBroadcastReceiver = new AmbientBroadcastReceiver();
+
+
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -26,6 +31,12 @@ public class AmbientService extends Service {
         startForeground(9854, buildNotification());
         MainActivity.alarmManager.setInexactRepeating(AlarmManager.RTC, 5000, MainActivity.interval, MainActivity.pendingIntent);
         MainActivity.alarmManagerActive = true;
+
+        IntentFilter screenStateFilter = new IntentFilter();
+        screenStateFilter.addAction(Intent.ACTION_SCREEN_ON);
+        screenStateFilter.addAction(Intent.ACTION_SCREEN_OFF);
+        registerReceiver(ambientBroadcastReceiver, screenStateFilter);
+
         return START_STICKY;
     }
 
@@ -34,6 +45,7 @@ public class AmbientService extends Service {
     public void onDestroy() {
         super.onDestroy();
         stopForeground(true);
+        unregisterReceiver(ambientBroadcastReceiver);
         Toast.makeText(this, "ADS Service Stopped", Toast.LENGTH_LONG).show();
     }
 

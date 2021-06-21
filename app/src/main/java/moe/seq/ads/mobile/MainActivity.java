@@ -44,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     public static Intent alarmIntent;
     public static PendingIntent pendingIntent;
     public static Boolean alarmManagerActive = false;
+    public static Boolean pendingIntentActive = false;
 
     public AuthWare authware;
     private SharedPreferences authPref;
@@ -178,13 +179,25 @@ public class MainActivity extends AppCompatActivity {
 
     public static void toggleTimer() {
         if (alarmManager != null && pendingIntent != null && alarmManagerActive) {
+            stopTimer();
+        } else {
+            startTimer(5 * 60 * 1000);
+        }
+    }
+
+    public static void stopTimer() {
+        if (alarmManager != null && pendingIntent != null && alarmManagerActive) {
             alarmManager.cancel(pendingIntent);
             Log.i("AlarmManager", "Auto Refresh Stopped");
             alarmManagerActive = false;
-        } else {
+        }
+    }
+
+    public static void startTimer(int triggerAt) {
+        if (!(alarmManager != null && pendingIntent != null && alarmManagerActive)) {
             assert alarmManager != null;
-            alarmManager.setInexactRepeating(AlarmManager.RTC, 5 * 60 * 1000, interval, pendingIntent);
-            Log.i("AlarmManager", "Auto Refresh Restarted with 5 Minute Delay");
+            alarmManager.setInexactRepeating(AlarmManager.RTC, triggerAt, interval, pendingIntent);
+            Log.i("AlarmManager", String.format("Auto Refresh Restarted with %s Delay", triggerAt));
             alarmManagerActive = true;
         }
     }
@@ -243,7 +256,7 @@ public class MainActivity extends AppCompatActivity {
         searchQuery = prefs.getString("etSearch", "");
         aspectRatio = !prefs.getBoolean("swRatio", false);
         pinsOnly = prefs.getBoolean("swPins", false);
-        centerImage = !prefs.getBoolean("swCenter", false);
+        centerImage = prefs.getBoolean("swCenter", false);
         enableHistory = prefs.getBoolean("swHistory", true);
         wallSelection = Integer.parseInt(prefs.getString("ltWallSelection", "0"));
         maxAge = Integer.parseInt(prefs.getString("ltMaxAge", "0"));
