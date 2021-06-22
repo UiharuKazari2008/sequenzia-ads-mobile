@@ -2,9 +2,11 @@ package moe.seq.ads.mobile;
 
 import android.app.*;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -31,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
     static String displayName;
     static String folderName;
     static String searchQuery;
+    static String mimResolution;
     static Boolean aspectRatio;
     static Boolean pinsOnly;
     static Boolean centerImage;
@@ -39,12 +42,14 @@ public class MainActivity extends AppCompatActivity {
     static int maxAge;
     static int imagesToKeep;
     static int wallSelection;
+    static int colorSelection;
 
     public static AlarmManager alarmManager;
     public static Intent alarmIntent;
     public static PendingIntent pendingIntent;
     public static Boolean alarmManagerActive = false;
     public static Boolean pendingIntentActive = false;
+    public static Boolean pendingRefresh = false;
 
     public AuthWare authware;
     private SharedPreferences authPref;
@@ -86,6 +91,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (isMyServiceRunning(AmbientService.class) || (alarmManager != null && alarmIntent != null && alarmManagerActive)) {
             bEnableTimer.setText("Stop Service");
+            bEnableTimer.setEnabled(true);
             bLoginButton.setEnabled(false);
         } else {
             bEnableTimer.setText("Start Service");
@@ -106,25 +112,49 @@ public class MainActivity extends AppCompatActivity {
 
                         @Override
                         public void onResponse(Boolean loginSuccess, String authCode, String sessionId) {
-                            if (authCode != null) {
-                                tAuthText.setText(authCode);
-                                tAuthText.setVisibility(View.VISIBLE);
-                            } else {
-                                tAuthText.setText("");
-                                tAuthText.setVisibility(View.GONE);
-                            }
-                            if (sessionId != null) {
-                                // Add Manual Login Button Here
-                            }
                             if (!loginSuccess) {
+                                AlertDialog.Builder dialog=new AlertDialog.Builder(MainActivity.this);
+                                if (authCode != null) {
+                                    dialog.setMessage(String.format("Login with Express Code: %s", authCode));
+                                } else {
+                                    dialog.setMessage("Unable to get express code for login, use browser login");
+                                }
+                                dialog.setTitle("Login");
+                                dialog.setPositiveButton("Login",
+                                        new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                attemptLogin();
+                                            }
+                                        });
+                                if (sessionId != null) {
+                                    dialog.setNeutralButton("via Browser",
+                                            new DialogInterface.OnClickListener() {
+                                                public void onClick(DialogInterface dialog, int which) {
+                                                    Uri fileURL = Uri.parse(String.format("https://%s//transfer?type=0&deviceID=%s", MainActivity.serverName, sessionId));
+                                                    MainActivity.this.startActivity(new Intent(Intent.ACTION_VIEW, fileURL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                                                }
+                                            });
+                                }
+
+                                dialog.setNegativeButton("Cancel",new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+
+                                    }
+                                });
+                                AlertDialog alertDialog = dialog.create();
+                                alertDialog.show();
                                 bLoginButton.setEnabled(true);
                             } else {
+                                bEnableTimer.setEnabled(true);
+                                bLoginButton.setEnabled(true);
                                 tErrorText.setText("");
                             }
                         }
                     });
                 } else {
                     bLoginButton.setEnabled(false);
+                    bEnableTimer.setEnabled(true);
                 }
             }
         });
@@ -226,8 +256,6 @@ public class MainActivity extends AppCompatActivity {
                 public void onResponse(Boolean loginSuccess, String authCode, String sessionId) {
                     if (!loginSuccess) {
                         bLoginButton.setEnabled(true);
-                        tAuthText.setText("......");
-                        tAuthText.setVisibility(View.VISIBLE);
                     } else {
                         bLoginButton.setEnabled(false);
                         if (!isMyServiceRunning(AmbientService.class)) {
@@ -236,9 +264,7 @@ public class MainActivity extends AppCompatActivity {
                             alarmManager.setInexactRepeating(AlarmManager.RTC, 5000, interval, pendingIntent);
                             alarmManagerActive = true;
                         }
-                        tAuthText.setText("");
-                        tAuthText.setVisibility(View.GONE);
-                        tErrorText.setText("");
+                        bEnableTimer.setEnabled(true);
                     }
                 }
             });
@@ -261,6 +287,8 @@ public class MainActivity extends AppCompatActivity {
         wallSelection = Integer.parseInt(prefs.getString("ltWallSelection", "0"));
         maxAge = Integer.parseInt(prefs.getString("ltMaxAge", "0"));
         imagesToKeep = Integer.parseInt(prefs.getString("ltImageCount", "5"));
+        colorSelection = Integer.parseInt(prefs.getString("ltBright", "0"));
+        mimResolution = prefs.getString("ltMinRes", "720");
         nsfwResults = prefs.getBoolean("swNSFW", false);
     }
 }

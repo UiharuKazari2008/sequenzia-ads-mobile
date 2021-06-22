@@ -32,6 +32,7 @@ import java.util.*;
 
 public class AmbientDataManager {
     public static int lastNotificationIndex = -1;
+    public static Boolean lastNotificationFavRemove = false;
 
     Context context;
 
@@ -47,7 +48,7 @@ public class AmbientDataManager {
         MainActivity.refreshSettings();
         SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
 
-        String minResolution = "minres=720&";
+        String minResolution = "";
         String folderName = "";
         String searchQuery = "";
         String aspectRatio = "";
@@ -55,6 +56,7 @@ public class AmbientDataManager {
         String nsfwResults = "nsfw=false&";
         String maxAge = "";
         String imagesToKeep = "";
+        String colorSelection = "";
 
         if (MainActivity.folderName.length() > 2 && MainActivity.folderName.contains(":")) { folderName = String.format("folder=%s&", MainActivity.folderName); }
         if (MainActivity.searchQuery.length() > 2) { searchQuery = String.format("search=%s&", MainActivity.searchQuery); }
@@ -63,9 +65,15 @@ public class AmbientDataManager {
         if (MainActivity.nsfwResults) { nsfwResults = "nsfw=true&"; }
         if (MainActivity.maxAge > 0) { maxAge = String.format("numdays=%s&", MainActivity.maxAge); }
         if (MainActivity.imagesToKeep > 1) { imagesToKeep = String.format("num=%s&", MainActivity.imagesToKeep); }
+        if (!MainActivity.mimResolution.equals("0")) { minResolution = String.format("minres=%s&", MainActivity.mimResolution); }
+        if (MainActivity.colorSelection == 1) {
+            colorSelection = "dark=false&";
+        } else if (MainActivity.colorSelection == 2) {
+            colorSelection = "dark=true&";
+        }
         String displayName = String.format("displayname=ADSMobile-%s", MainActivity.displayName);
 
-        final String url = String.format("https://%s/ambient-refresh?nocds=true&%s%s%s%s%s%s%s%s%s", MainActivity.serverName, imagesToKeep, minResolution, folderName, searchQuery, aspectRatio, pinsOnly, nsfwResults, maxAge, displayName);
+        final String url = String.format("https://%s/ambient-refresh?nocds=true&%s%s%s%s%s%s%s%s%s%s", MainActivity.serverName, imagesToKeep, colorSelection, minResolution, folderName, searchQuery, aspectRatio, pinsOnly, nsfwResults, maxAge, displayName);
 
         Log.i("ADM/Dispatch", url);
 
@@ -122,6 +130,7 @@ public class AmbientDataManager {
                             // Request Images to be downloaded
                             downloadImages(imageResponse.length());
                             completed.onResponse(true);
+                            MainActivity.pendingRefresh = false;
                         } catch ( JSONException e) {
                             Log.e("ADM/Response", String.format("Failed to get required data from server: %s", e));
                             completed.onError(String.format("Failed to get a valid response from server: %s", e));
@@ -167,6 +176,10 @@ public class AmbientDataManager {
                         @Override
                         public void onError(String message) {
                             Toast.makeText(context, String.format("AmbientDataManager Failure: %s", message), Toast.LENGTH_SHORT).show();
+                            SharedPreferences.Editor prefsEditor = sharedPref.edit();
+                            prefsEditor.putInt("lastImageIndex", -1);
+                            prefsEditor.apply();
+                            MainActivity.pendingRefresh = true;
                         }
 
                         @Override
@@ -181,6 +194,7 @@ public class AmbientDataManager {
                     @Override
                     public void onError(String message) {
                         Toast.makeText(context, String.format("AmbientDataManager Failure: %s", message), Toast.LENGTH_SHORT).show();
+                        MainActivity.pendingRefresh = true;
                     }
 
                     @Override
@@ -218,6 +232,7 @@ public class AmbientDataManager {
                 SharedPreferences.Editor prefsEditor = sharedPref.edit();
                 prefsEditor.putInt("lastImageIndex", finalNextImageIndex);
                 prefsEditor.apply();
+                lastNotificationFavRemove = false;
                 updateNotification(finalNextImageIndex);
                 ambientHistorySet(finalNextImageIndex);
             }
@@ -440,13 +455,14 @@ public class AmbientDataManager {
             PendingIntent favImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("FAV_IMAGE:%s", index)), 0);
             PendingIntent pauseImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction("TOGGLE_TIMER"), 0);
 
-            final String notificationText = String.format("%s - %s", imageObject.get("location").getAsString(), imageObject.get("fileDate").getAsString());
+            final String notificationText = String.format("%s", imageObject.get("location").getAsString());
 
             Notification.Builder notification = new Notification.Builder(context, MainActivity.NOTIFICATION_CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_notification)
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
                     .setTicker(notificationText)
                     .setContentTitle(notificationText)
+                    .setSubText(imageObject.get("fileDate").getAsString())
                     .setContentIntent(openImageIntent);
             final String notificationContents = imageObject.get("fileContents").getAsString();
             if (notificationContents.length() >= 5) {
@@ -458,10 +474,12 @@ public class AmbientDataManager {
                 notification.addAction(R.drawable.ic_play, "Resume", pauseImageIntent);
             }
             notification.addAction(R.drawable.ic_next, "Next", nextImageIntent);
-            int buttonIntentId = 1;
-            if (!imageObject.get("fileFav").getAsBoolean()) {
+            Notification.MediaStyle mediaStyle = new Notification.MediaStyle();
+            if (!imageObject.get("fileFav").getAsBoolean() && !lastNotificationFavRemove) {
                 notification.addAction(R.drawable.ic_fav, "Favorite", favImageIntent);
-                buttonIntentId = 2;
+                mediaStyle.setShowActionsInCompactView(1,2);
+            } else {
+                mediaStyle.setShowActionsInCompactView(1);
             }
             try {
                 final String fileName = imageObject.get("fileName").getAsString();
@@ -476,7 +494,7 @@ public class AmbientDataManager {
             } catch (Exception e) {
                 Log.e("NotifiManager", String.format("Failed to load bitmap for notification: %s", e));
             }
-            notification.setStyle(new Notification.MediaStyle().setShowActionsInCompactView(buttonIntentId));
+            notification.setStyle(mediaStyle);
             manager.notify(9854, notification.build());
 
             lastNotificationIndex = index;

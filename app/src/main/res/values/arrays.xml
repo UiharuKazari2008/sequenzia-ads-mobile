@@ -67,4 +67,28 @@
         <item>2</item>
         <item>3</item>
     </string-array>
+    <string-array name="settingsBrightnessNames">
+        <item>Both</item>
+        <item>Light</item>
+        <item>Dark</item>
+    </string-array>
+    <string-array name="settingsBrightnessVales">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+    <string-array name="settingsMinResNames">
+        <item>None</item>
+        <item>720px</item>
+        <item>1080px</item>
+        <item>2048px</item>
+        <item>4096px</item>
+    </string-array>
+    <string-array name="settingsMinResValues">
+        <item>0</item>
+        <item>720</item>
+        <item>1080</item>
+        <item>2048</item>
+        <item>4096</item>
+    </string-array>
 </resources>

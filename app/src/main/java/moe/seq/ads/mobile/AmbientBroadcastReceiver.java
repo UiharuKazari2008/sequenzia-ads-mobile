@@ -23,7 +23,22 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
         if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
             Log.i("Broadcast", "Screen Asleep!");
         } else if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
-            if (MainActivity.pendingIntentActive) {
+            if (MainActivity.pendingRefresh) {
+                Log.i("Broadcast", "Awake with Pending download!");
+                ambientDataManager.ambientRefresh(new AmbientDataManager.AmbientRefreshResponse() {
+                    @Override
+                    public void onError(String message) {
+                        Toast.makeText(context, String.format("AmbientDataManager Failure: %s", message), Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onResponse(Boolean completed) {
+                        MainActivity.pendingIntentActive = false;
+                        MainActivity.pendingRefresh = false;
+                        MainActivity.startTimer(0);
+                    }
+                });
+            } else if (MainActivity.pendingIntentActive) {
                 Log.i("Broadcast", "Awake with Pending update!");
                 //ambientDataManager.nextImage(true);
                 MainActivity.pendingIntentActive = false;
@@ -59,6 +74,8 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                 case "FAV_IMAGE":
                     if (index != -1) {
                         ambientDataManager.ambientFavorite(index);
+                        AmbientDataManager.lastNotificationFavRemove = true;
+                        ambientDataManager.updateNotification(AmbientDataManager.lastNotificationIndex);
                     }
                     break;
                 case "OPEN_IMAGE":

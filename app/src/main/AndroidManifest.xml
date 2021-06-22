@@ -15,6 +15,7 @@
             android:theme="@style/Theme.ADSMobile">
         <activity
                 android:name=".SettingsActivity"
+                android:screenOrientation="portrait"
                 android:label="@string/title_activity_settings">
         </activity>
 
@@ -24,7 +25,8 @@
                 android:name=".AmbientBroadcastReceiver"
                 android:enabled="true"/>
 
-        <activity android:name=".MainActivity">
+        <activity android:name=".MainActivity"
+                  android:screenOrientation="portrait" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 

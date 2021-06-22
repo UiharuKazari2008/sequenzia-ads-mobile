@@ -49,6 +49,14 @@
                 android:summary="Download these many images for offline access"
                 android:defaultValue="5"
                 android:title="Number of Images" />
+        <ListPreference
+                android:dialogTitle="Resolution"
+                android:entries="@array/settingsMinResNames"
+                android:entryValues="@array/settingsMinResValues"
+                android:key="ltMinRes"
+                android:defaultValue="720"
+                android:summary="Minimum Resolution of Images"
+                android:title="Minimum Resolutions" />
         <EditTextPreference
                 android:defaultValue=""
                 android:selectAllOnFocus="true"
@@ -73,6 +81,14 @@
                 android:defaultValue="0"
                 android:summary="Only return images within these days"
                 android:title="Max Age" />
+        <ListPreference
+                android:dialogTitle="Brightness"
+                android:entries="@array/settingsBrightnessNames"
+                android:entryValues="@array/settingsBrightnessVales"
+                android:key="ltBright"
+                android:defaultValue="0"
+                android:summary="Images should be Light, Dark, or both"
+                android:title="Brightness" />
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Bypass Ratio Enforcement" android:key="swRatio"
@@ -85,6 +101,5 @@
                 android:defaultValue="false"
                 android:title="Show NSFW Images" android:key="swNSFW"
                 android:summary="Allow NSFW Images to be returned"/>
-
     </PreferenceCategory>
 </PreferenceScreen>
