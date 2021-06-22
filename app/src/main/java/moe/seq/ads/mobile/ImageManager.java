@@ -11,6 +11,7 @@ import android.view.Display;
 import android.view.WindowManager;
 import androidx.annotation.RequiresApi;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -27,15 +28,15 @@ public class ImageManager {
         void onError(String message);
         void onResponse(Boolean completed);
     }
-
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void setWallpaperImage (String fileName, ImageManagerResponse cb) {
         SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
         WallpaperManager manager = WallpaperManager.getInstance(context);
 
         try {
-            FileInputStream file = context.openFileInput(fileName);
-            Bitmap bitmap = BitmapFactory.decodeStream(file);
+            File file = new File(fileName);
+            FileInputStream fileStream = context.openFileInput(file.getName());
+            Bitmap bitmap = BitmapFactory.decodeStream(fileStream);
             try {
                 int displaySelect = WallpaperManager.FLAG_SYSTEM + WallpaperManager.FLAG_LOCK;
                 if (MainActivity.wallSelection == 3) {
@@ -69,11 +70,25 @@ public class ImageManager {
             cb.onError("Failed to find internal file!");
         }
     }
-
     // Add Storage Manager
-    /*private void clearStorage () {
-
-    }*/
+    private void clearStorage () {
+        File[] folder = context.getFilesDir().listFiles();
+        assert folder != null;
+        for (File file : folder) {
+            if (!file.isDirectory()) {
+                try {
+                    boolean fileRm = file.delete();
+                    if (fileRm) {
+                        Log.i("FilesManager", String.format("Deleted: %s", file.getAbsolutePath()));
+                    } else {
+                        Log.i("FilesManager", String.format("Failed to: %s", file.getAbsolutePath()));
+                    }
+                } catch (Exception e) {
+                    Log.i("FilesManager", String.format("Failed to delete %s: %s", file.getAbsolutePath(), e));
+                }
+            }
+        }
+    }
 
     private Bitmap cropBitmapFromCenterAndScreenSize(Bitmap bitmap) {
         float screenWidth, screenHeight;

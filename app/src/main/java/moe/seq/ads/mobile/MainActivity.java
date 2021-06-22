@@ -232,6 +232,17 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public static void resetTimer() {
+        if (alarmManager != null && pendingIntent != null) {
+            alarmManager.cancel(pendingIntent);
+            if (!alarmManagerActive) {
+                alarmManager.setInexactRepeating(AlarmManager.RTC, interval, interval, pendingIntent);
+                Log.i("AlarmManager", String.format("Auto Refresh Restarted with %s Delay", interval));
+            }
+            alarmManagerActive = true;
+        }
+    }
+
     private boolean isMyServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {

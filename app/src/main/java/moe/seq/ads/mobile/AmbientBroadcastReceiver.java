@@ -19,6 +19,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
     @Override
     public void onReceive (Context context , Intent intent) {
         AmbientDataManager ambientDataManager = new AmbientDataManager(context);
+        ImageManager imageManager = new ImageManager(context);
 
         if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
             Log.i("Broadcast", "Screen Asleep!");
@@ -35,7 +36,9 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                     public void onResponse(Boolean completed) {
                         MainActivity.pendingIntentActive = false;
                         MainActivity.pendingRefresh = false;
-                        MainActivity.startTimer(0);
+                        //MainActivity.startTimer(0);
+                        ambientDataManager.nextImage(true);
+                        MainActivity.resetTimer();
                     }
                 });
             } else if (MainActivity.pendingIntentActive) {
@@ -75,7 +78,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                     if (index != -1) {
                         ambientDataManager.ambientFavorite(index);
                         AmbientDataManager.lastNotificationFavRemove = true;
-                        ambientDataManager.updateNotification(AmbientDataManager.lastNotificationIndex);
+                        ambientDataManager.updateNotification();
                     }
                     break;
                 case "OPEN_IMAGE":

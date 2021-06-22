@@ -25,13 +25,14 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 
 public class AmbientDataManager {
-    public static int lastNotificationIndex = -1;
+    public static String lastNotification = null;
     public static Boolean lastNotificationFavRemove = false;
 
     Context context;
@@ -86,6 +87,10 @@ public class AmbientDataManager {
                         try {
                             // Get Required Response
                             JSONArray imageResponse = response.getJSONArray("randomImagev2");
+                            String[][] dataArray = new String[imageResponse.length()][2];
+
+                            SharedPreferences.Editor clearEditorPref = sharedPref.edit().clear();
+                            clearEditorPref.apply();
 
                             // Proccess Images in Response
                             for (int i=0; i < imageResponse.length(); i++) {
@@ -96,8 +101,9 @@ public class AmbientDataManager {
                                 // Generate Object for storage
                                 final String fullImageURL = singleImage.getString("fullImage");
                                 final String previewImageURL = singleImage.getString("previewImage");
-                                final String fileName = String.format("adi-%s", i);
-                                final String previewName = String.format("adp-%s", i);
+                                final int imageEid = singleImage.getInt("eid");
+                                final String fileName = String.format("adi-%s", imageEid);
+                                final String previewName = String.format("adp-%s", imageEid);
                                 final int imageColor = android.graphics.Color.rgb(
                                         Integer.parseInt(singleImage.getString("colorR")),
                                         Integer.parseInt(singleImage.getString("colorG")),
@@ -109,7 +115,7 @@ public class AmbientDataManager {
                                 dataImage.put("filePreviewName", previewName);
                                 dataImage.put("fileDate", singleImage.getString("date"));
                                 dataImage.put("fileContents", singleImage.getString("contentClean"));
-                                dataImage.put("fileEid", singleImage.getInt("eid"));
+                                dataImage.put("fileEid", imageEid);
                                 dataImage.put("fileId", singleImage.getInt("id"));
                                 dataImage.put("fileChannelId", singleImage.getString("channelId"));
                                 dataImage.put("fileColor", imageColor);
@@ -123,14 +129,37 @@ public class AmbientDataManager {
                                 Gson gson = new Gson();
                                 String json = gson.toJson(dataImage);
                                 SharedPreferences.Editor prefsEditor = sharedPref.edit();
-                                prefsEditor.putString(String.format("ambientResponse-%s", i), json);
+                                prefsEditor.putString(String.format("ambientResponse-%s", imageEid), json);
                                 prefsEditor.apply();
+                                dataArray[i][0] = fileName;
+                                dataArray[i][1] = fullImageURL;
                             }
 
                             // Request Images to be downloaded
-                            downloadImages(imageResponse.length());
-                            completed.onResponse(true);
-                            MainActivity.pendingRefresh = false;
+                            File[] oldImages = context.getFilesDir().listFiles();
+                            downloadImages(dataArray, new DownloadImageResponse() {
+                                @Override
+                                public void onResponse(Boolean ok) {
+                                    completed.onResponse(true);
+                                    MainActivity.pendingRefresh = false;
+                                    if (oldImages != null && oldImages.length > 0) {
+                                        for (File file : oldImages) {
+                                            if (!file.isDirectory()) {
+                                                try {
+                                                    boolean fileRm = file.delete();
+                                                    if (fileRm) {
+                                                        Log.i("FilesManager", String.format("Deleted: %s", file.getAbsolutePath()));
+                                                    } else {
+                                                        Log.i("FilesManager", String.format("Failed to: %s", file.getAbsolutePath()));
+                                                    }
+                                                } catch (Exception e) {
+                                                    Log.i("FilesManager", String.format("Failed to delete %s: %s", file.getAbsolutePath(), e));
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
                         } catch ( JSONException e) {
                             Log.e("ADM/Response", String.format("Failed to get required data from server: %s", e));
                             completed.onError(String.format("Failed to get a valid response from server: %s", e));
@@ -150,45 +179,29 @@ public class AmbientDataManager {
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void nextImage(Boolean firstTry) {
         if (isDisplayOn()) {
-            MainActivity.refreshSettings();
-            SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
-            int nextImageIndex = sharedPref.getInt("lastImageIndex", -1) + 1;
-            Set<String> set = sharedPref.getStringSet("downloadedImages", null);
-            if (set != null) {
-                List<String> list = new ArrayList<String>(set);
-                String[] downloadedImages = list.toArray(new String[0]);
-
-                Log.i("NextImage", String.format("Images in store: %s - Next Image is: %s", downloadedImages.length, nextImageIndex));
-
-                if (downloadedImages.length > 0 && downloadedImages.length > nextImageIndex) {
-                    final String responseData = sharedPref.getString(String.format("ambientResponse-%s", nextImageIndex), null);
-                    JsonObject imageObject = null;
-                    try {
-                        imageObject = new Gson().fromJson(responseData, JsonObject.class).getAsJsonObject("nameValuePairs");
-                    } catch (JsonIOException e) {
-                        Toast.makeText(context, String.format("Unable to get data: %s", e), Toast.LENGTH_SHORT).show();
+            if (lastNotification != null) {
+                File oldFile = new File(context.getFilesDir(), String.format("adi-%s", lastNotification));
+                try {
+                    boolean delete = oldFile.delete();
+                    if (oldFile.exists()) {
+                        context.deleteFile(oldFile.getAbsolutePath());
+                    } else if (delete) {
+                        Log.i("SetImage/Img", String.format("Deleted old file: %s", oldFile.getName()));
+                    } else {
+                        Log.e("SetImage/Img", String.format("Failed to delete old file: %s", oldFile.getName()));
                     }
-                    if (imageObject != null) {
-                        setImage(imageObject, nextImageIndex);
-                    }
-                } else if (firstTry) {
-                    ambientRefresh(new AmbientDataManager.AmbientRefreshResponse() {
-                        @Override
-                        public void onError(String message) {
-                            Toast.makeText(context, String.format("AmbientDataManager Failure: %s", message), Toast.LENGTH_SHORT).show();
-                            SharedPreferences.Editor prefsEditor = sharedPref.edit();
-                            prefsEditor.putInt("lastImageIndex", -1);
-                            prefsEditor.apply();
-                            MainActivity.pendingRefresh = true;
-                        }
-
-                        @Override
-                        public void onResponse(Boolean completed) {
-
-                        }
-                    });
+                } catch (Exception e) {
+                    Log.e("SetImage/Img", String.format("Failed to delete %s: %s", oldFile.getAbsolutePath(), e));
                 }
-            } else {
+            }
+            MainActivity.refreshSettings();
+            File[] downloadedImages = context.getFilesDir().listFiles();
+            if (downloadedImages != null && downloadedImages.length > 0) {
+                int randomIndex = new Random().nextInt(downloadedImages.length);
+                String imageEid = downloadedImages[randomIndex].getName().split("-", 2)[1];
+                Log.i("NextImage", String.format("Images in store: %s - Next Image ID: %s", downloadedImages.length, imageEid));
+                setImage(imageEid);
+            } else if (firstTry) {
                 Log.i("NextImage", "No images in store");
                 ambientRefresh(new AmbientDataManager.AmbientRefreshResponse() {
                     @Override
@@ -210,16 +223,15 @@ public class AmbientDataManager {
         }
     }
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private void setImage(@org.jetbrains.annotations.NotNull JsonObject imageObject, int nextImageIndex) {
-        Log.i("SetImage", String.format("Request to set image #%s as wallpaper", nextImageIndex));
+    private void setImage(String imageEid) {
+        Log.i("SetImage", String.format("Request to set image ID %s as wallpaper", imageEid));
 
         SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
-        final String filename = imageObject.get("fileName").getAsString();
+        final String filename = String.format("adi-%s", imageEid);
 
         Log.i("SetImage", String.format("Using file: %s", filename));
 
         ImageManager imageManager = new ImageManager(context);
-        final int finalNextImageIndex = nextImageIndex;
         imageManager.setWallpaperImage(filename, new ImageManager.ImageManagerResponse() {
             @Override
             public void onError(String message) {
@@ -229,12 +241,10 @@ public class AmbientDataManager {
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onResponse(Boolean completed) {
-                SharedPreferences.Editor prefsEditor = sharedPref.edit();
-                prefsEditor.putInt("lastImageIndex", finalNextImageIndex);
-                prefsEditor.apply();
                 lastNotificationFavRemove = false;
-                updateNotification(finalNextImageIndex);
-                ambientHistorySet(finalNextImageIndex);
+                lastNotification = imageEid;
+                updateNotification();
+                ambientHistorySet(imageEid);
             }
         });
     }
@@ -253,7 +263,6 @@ public class AmbientDataManager {
                 e.printStackTrace();
             }
             try {
-                Log.w("FindElement", responseData);
                 assert imageObject != null;
                 channelId = imageObject.get("fileChannelId").getAsString();
                 messageEid = imageObject.get("fileEid").getAsString();
@@ -292,35 +301,13 @@ public class AmbientDataManager {
 
         NetworkManager.getInstance(context).addToRequestQueue(apiRequest);
     }
-    public void ambientHistorySet (int index) {
-        String messageEid = "";
-
-        SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
-        final String responseData = sharedPref.getString(String.format("ambientResponse-%s", index), null);
-        if (responseData != null) {
-            JsonObject imageObject = null;
-            try {
-                imageObject = new Gson().fromJson(responseData, JsonObject.class).getAsJsonObject("nameValuePairs");
-            } catch (JsonIOException e) {
-                e.printStackTrace();
-            }
-            try {
-                Log.w("FindElement", responseData);
-                assert imageObject != null;
-                messageEid = imageObject.get("fileEid").getAsString();
-            } catch (JsonIOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        String finalMessageEid = messageEid;
-
-        final String url = String.format("https://%s/ambient-history?command=set&displayname=ADSMobile-%s&imageid=%s", MainActivity.serverName, MainActivity.displayName, finalMessageEid);
+    public void ambientHistorySet (String imageEid) {
+        final String url = String.format("https://%s/ambient-history?command=set&displayname=ADSMobile-%s&imageid=%s", MainActivity.serverName, MainActivity.displayName, imageEid);
 
         StringRequest apiRequest = new StringRequest(Request.Method.GET, url, new com.android.volley.Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                Log.i("ADS/History", String.format("Sent History Item: %s", finalMessageEid));
+                Log.i("ADS/History", String.format("Sent History Item: %s", imageEid));
             }
         }, new com.android.volley.Response.ErrorListener() {
             @Override
@@ -343,7 +330,6 @@ public class AmbientDataManager {
                     @Override
                     public void onResponse(byte[] response) {
                         try {
-
                             FileOutputStream outputStream;
                             outputStream = context.openFileOutput(filename, Context.MODE_PRIVATE);
                             outputStream.write(response);
@@ -351,11 +337,9 @@ public class AmbientDataManager {
 
                             cb.onResponse(true);
                         } catch (IOException e) {
-                            // TODO: remove all logs before finalizing app
                             Log.d("failed to save file", "File not saved", e);
 
-                            String msg = "Failed to save file";
-                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
+                            Toast.makeText(context, "Failed to save file", Toast.LENGTH_SHORT).show();
                             cb.onResponse(false);
                         }
                     }
@@ -381,65 +365,50 @@ public class AmbientDataManager {
         params.put("filename", filename);    // I setup my lambda function to check for this header
         return params;
     }
-    public void downloadImages (int imagesLength) {
-        SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
-        Set<String> downloadedImages = new HashSet<String>();
-        SharedPreferences.Editor prefsEditor = sharedPref.edit();
-        prefsEditor.putInt("lastImageIndex", -1);
-        prefsEditor.apply();
-
-        for (int i=0; i < imagesLength; i++) {
-            final String responseData = sharedPref.getString(String.format("ambientResponse-%s", i), null);
-            JsonObject imageObject = null;
-            try {
-                imageObject = new Gson().fromJson(responseData, JsonObject.class).getAsJsonObject("nameValuePairs");
-            } catch (JsonIOException e) {
-                Toast.makeText(context, String.format("Unable to get data: %s", e), Toast.LENGTH_SHORT).show();
-            }
-            if (imageObject != null) {
-                final String filename = imageObject.get("fileName").getAsString();
-                final String url = imageObject.get("fileUrl").getAsString();
-
-                int finalI = i;
-                sendGetRequest(filename, url, new GetImageRequest() {
-                    @RequiresApi(api = Build.VERSION_CODES.N)
-                    @Override
-                    public void onError(String message) {
-                        Toast.makeText(context, String.format("Failed to download image #%s", finalI), Toast.LENGTH_SHORT).show();
-                        if (imagesLength - 1 == finalI) {
-                            nextImage(false);
-                        }
+    private interface DownloadImageResponse {
+        void onResponse(Boolean ok);
+    }
+    public void downloadImages (String[][] imagesToDownload, DownloadImageResponse completed) {
+        for (int i=0; i < imagesToDownload.length; i++) {
+            final int finalI = i;
+            final String fileName = imagesToDownload[i][0];
+            final String url = imagesToDownload[i][1];
+            sendGetRequest(fileName, url, new GetImageRequest() {
+                @RequiresApi(api = Build.VERSION_CODES.N)
+                @Override
+                public void onError(String message) {
+                    Toast.makeText(context, String.format("Failed to download image %s", url), Toast.LENGTH_SHORT).show();
+                    if (imagesToDownload.length - 1 == finalI) {
+                        nextImage(false);
+                        completed.onResponse(true);
                     }
+                }
 
-                    @RequiresApi(api = Build.VERSION_CODES.N)
-                    @Override
-                    public void onResponse(Boolean ok) {
-                        downloadedImages.add(String.format("ambientResponse-%s", finalI));
-                        SharedPreferences.Editor prefsEditor = sharedPref.edit();
-                        prefsEditor.putStringSet("downloadedImages", downloadedImages);
-                        prefsEditor.apply();
-                        if (imagesLength - 1 == finalI) {
-                            nextImage(false);
-                        }
+                @RequiresApi(api = Build.VERSION_CODES.N)
+                @Override
+                public void onResponse(Boolean ok) {
+                    if (imagesToDownload.length - 1 == finalI) {
+                        nextImage(false);
+                        completed.onResponse(true);
                     }
-                });
-            }
+                }
+            });
         }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void toggleTimer () {
         MainActivity.toggleTimer();
-        updateNotification(lastNotificationIndex);
+        updateNotification();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
-    public void updateNotification(int index) {
+    public void updateNotification() {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         assert manager != null;
         SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
         JsonObject imageObject = null;
-        final String responseData = sharedPref.getString(String.format("ambientResponse-%s", index), null);
+        final String responseData = sharedPref.getString(String.format("ambientResponse-%s", lastNotification), null);
         if (responseData != null) {
             try {
                 imageObject = new Gson().fromJson(responseData, JsonObject.class).getAsJsonObject("nameValuePairs");
@@ -447,12 +416,11 @@ public class AmbientDataManager {
                 e.printStackTrace();
             }
         }
-        assert imageObject != null;
 
         if (imageObject != null) {
             PendingIntent nextImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction("NEXT_IMAGE"), 0);
-            PendingIntent openImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("OPEN_IMAGE:%s", index)), 0);
-            PendingIntent favImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("FAV_IMAGE:%s", index)), 0);
+            PendingIntent openImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("OPEN_IMAGE:%s", lastNotification)), 0);
+            PendingIntent favImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("FAV_IMAGE:%s", lastNotification)), 0);
             PendingIntent pauseImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction("TOGGLE_TIMER"), 0);
 
             final String notificationText = String.format("%s", imageObject.get("location").getAsString());
@@ -496,8 +464,6 @@ public class AmbientDataManager {
             }
             notification.setStyle(mediaStyle);
             manager.notify(9854, notification.build());
-
-            lastNotificationIndex = index;
         }
     }
 
