@@ -17,6 +17,7 @@
         <activity
                 android:name=".SettingsActivity"
                 android:screenOrientation="portrait"
+                android:parentActivityName="moe.seq.ads.mobile.MainActivity"
                 android:label="@string/title_activity_settings">
         </activity>
 

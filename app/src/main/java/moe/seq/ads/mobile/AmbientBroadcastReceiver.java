@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
 import android.util.Log;
 import android.widget.Toast;
 import androidx.annotation.RequiresApi;
@@ -13,19 +14,26 @@ import com.google.gson.Gson;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonObject;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class AmbientBroadcastReceiver extends BroadcastReceiver {
+
+    Timer refreshTimer = new Timer();
+    final Handler handler = new Handler();
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onReceive (Context context , Intent intent) {
         AmbientDataManager ambientDataManager = new AmbientDataManager(context);
-        ImageManager imageManager = new ImageManager(context);
 
-        if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
-            Log.i("Broadcast", "Screen Asleep!");
-        } else if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
-            if (MainActivity.pendingRefresh) {
-                Log.i("Broadcast", "Awake with Pending download!");
+
+        if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
+            Log.i("Broadcast", "Screen Awake!");
+            refreshTimer.cancel();
+        } else if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
+            if (MainActivity.pendingRefresh && MainActivity.flipBoardEnabled && !AmbientDataManager.pendingJob) {
+                Log.i("Broadcast", "Sleep with Pending download!");
                 ambientDataManager.ambientRefresh(new AmbientDataManager.AmbientRefreshResponse() {
                     @Override
                     public void onError(String message) {
@@ -34,18 +42,31 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
 
                     @Override
                     public void onResponse(Boolean completed) {
-                        MainActivity.pendingIntentActive = false;
                         MainActivity.pendingRefresh = false;
-                        //MainActivity.startTimer(0);
-                        ambientDataManager.nextImage(true);
-                        MainActivity.resetTimer();
                     }
                 });
-            } else if (MainActivity.pendingIntentActive) {
-                Log.i("Broadcast", "Awake with Pending update!");
-                //ambientDataManager.nextImage(true);
-                MainActivity.pendingIntentActive = false;
-                MainActivity.startTimer(0);
+            } else if (MainActivity.lastChangeTime + MainActivity.interval < System.currentTimeMillis() && MainActivity.flipBoardEnabled && !AmbientDataManager.pendingJob) {
+                Log.i("Broadcast", "Sleep with Pending update!");
+                ambientDataManager.nextImage(true);
+            } else if (MainActivity.flipBoardEnabled) {
+                MainActivity.refreshSettings();
+                final TimerTask callNextImage = new TimerTask() {
+                    @Override
+                    public void run() {
+                        // post a runnable to the handler
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Log.i("TimerEvent", "Getting Next Image!");
+                                ambientDataManager.nextImage(true);
+                            }
+                        });
+                    }
+                };
+                refreshTimer = new Timer();
+                final long nextEventTime = ((MainActivity.lastChangeTime + MainActivity.interval) - System.currentTimeMillis());
+                refreshTimer.schedule(callNextImage, nextEventTime);
+                Log.i("BroadcastEvent", String.format("Next Cycle Time is : %s Sec", nextEventTime / 1000));
             }
         } else {
             final String[] calledActions = intent.getAction().split(":", 2);
@@ -76,9 +97,8 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                     break;
                 case "FAV_IMAGE":
                     if (index != -1) {
-                        ambientDataManager.ambientFavorite(index);
                         AmbientDataManager.lastNotificationFavRemove = true;
-                        ambientDataManager.updateNotification();
+                        ambientDataManager.ambientFavorite(index);
                     }
                     break;
                 case "OPEN_IMAGE":

@@ -5,9 +5,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Point;
 import android.os.Build;
 import android.util.Log;
-import android.view.Display;
 import android.view.WindowManager;
 import androidx.annotation.RequiresApi;
 
@@ -94,10 +94,18 @@ public class ImageManager {
         float screenWidth, screenHeight;
         float bitmap_width = bitmap.getWidth(), bitmap_height = bitmap
                 .getHeight();
-        Display display = ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE))
-                .getDefaultDisplay();
-        screenWidth = display.getWidth();
-        screenHeight = display.getHeight();
+        Point size = new Point();
+        ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE))
+                .getDefaultDisplay().getRealSize(size);
+
+        final int screenRotation = ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getRotation();
+        if (screenRotation == 1 || screenRotation == 3) {
+            screenWidth = size.y;
+            screenHeight = size.x;
+        } else {
+            screenWidth = size.x;
+            screenHeight = size.y;
+        }
 
         Log.v("TAG", "bitmap_width " + bitmap_width);
         Log.v("TAG", "bitmap_height " + bitmap_height);

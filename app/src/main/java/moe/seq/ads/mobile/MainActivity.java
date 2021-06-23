@@ -44,12 +44,9 @@ public class MainActivity extends AppCompatActivity {
     static int wallSelection;
     static int colorSelection;
 
-    public static AlarmManager alarmManager;
-    public static Intent alarmIntent;
-    public static PendingIntent pendingIntent;
-    public static Boolean alarmManagerActive = false;
-    public static Boolean pendingIntentActive = false;
+    public static Boolean flipBoardEnabled = false;
     public static Boolean pendingRefresh = false;
+    public static long lastChangeTime = 0;
 
     public AuthWare authware;
     private SharedPreferences authPref;
@@ -74,11 +71,6 @@ public class MainActivity extends AppCompatActivity {
         refreshSettings();
         authPref = this.getSharedPreferences("seq.authWare", Context.MODE_PRIVATE);
 
-        // Alarm Manager for Recurring Refresh
-        alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        alarmIntent = new Intent(MainActivity.this, AmbientBroadcastReceiver.class).setAction("NEXT_IMAGE");
-        pendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, alarmIntent, 0);
-
         // Generate New AuthWare
         authware = new AuthWare(MainActivity.this);
 
@@ -89,12 +81,13 @@ public class MainActivity extends AppCompatActivity {
         tAuthText = findViewById(R.id.codeHolder);
         tErrorText = findViewById(R.id.errorText);
 
-        if (isMyServiceRunning(AmbientService.class) || (alarmManager != null && alarmIntent != null && alarmManagerActive)) {
-            bEnableTimer.setText("Stop Service");
+        if (flipBoardEnabled) {
+            bEnableTimer.setText("Stop");
             bEnableTimer.setEnabled(true);
+            bDownloadNowButton.setEnabled(true);
             bLoginButton.setEnabled(false);
         } else {
-            bEnableTimer.setText("Start Service");
+            bEnableTimer.setText("Start");
         }
 
         // Attempt to login
@@ -145,9 +138,11 @@ public class MainActivity extends AppCompatActivity {
                                 AlertDialog alertDialog = dialog.create();
                                 alertDialog.show();
                                 bLoginButton.setEnabled(true);
+                                bDownloadNowButton.setEnabled(false);
                             } else {
                                 bEnableTimer.setEnabled(true);
-                                bLoginButton.setEnabled(true);
+                                bDownloadNowButton.setEnabled(true);
+                                bLoginButton.setEnabled(false);
                                 tErrorText.setText("");
                             }
                         }
@@ -155,6 +150,8 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     bLoginButton.setEnabled(false);
                     bEnableTimer.setEnabled(true);
+                    bDownloadNowButton.setEnabled(true);
+                    tErrorText.setText("");
                 }
             }
         });
@@ -178,14 +175,14 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 if (isMyServiceRunning(AmbientService.class)) {
                     stopService(new Intent(MainActivity.this, AmbientService.class));
-                    if (alarmManager != null && alarmIntent != null && alarmManagerActive) {
-                        alarmManager.cancel(pendingIntent);
-                        alarmManagerActive = false;
+                    if (flipBoardEnabled) {
+                        lastChangeTime = 0;
+                        flipBoardEnabled = false;
                     }
-                    bEnableTimer.setText("Start Service");
+                    bEnableTimer.setText("Start");
                 } else {
                     startService(new Intent(MainActivity.this, AmbientService.class));
-                    bEnableTimer.setText("Disable Service");
+                    bEnableTimer.setText("Disable");
                 }
             }
         });
@@ -195,6 +192,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 sendBroadcast(new Intent(MainActivity.this, AmbientBroadcastReceiver.class).setAction("REFRESH_IMAGES"));
+                if (!isMyServiceRunning(AmbientService.class)) {
+                    startService(new Intent(MainActivity.this, AmbientService.class));
+                }
+                if (!flipBoardEnabled) {
+                    lastChangeTime = 0;
+                    flipBoardEnabled = true;
+                }
+                bEnableTimer.setText("Disable");
             }
         });
 
@@ -208,39 +213,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public static void toggleTimer() {
-        if (alarmManager != null && pendingIntent != null && alarmManagerActive) {
-            stopTimer();
-        } else {
-            startTimer(5 * 60 * 1000);
-        }
-    }
-
-    public static void stopTimer() {
-        if (alarmManager != null && pendingIntent != null && alarmManagerActive) {
-            alarmManager.cancel(pendingIntent);
-            Log.i("AlarmManager", "Auto Refresh Stopped");
-            alarmManagerActive = false;
-        }
-    }
-
-    public static void startTimer(int triggerAt) {
-        if (!(alarmManager != null && pendingIntent != null && alarmManagerActive)) {
-            assert alarmManager != null;
-            alarmManager.setInexactRepeating(AlarmManager.RTC, triggerAt, interval, pendingIntent);
-            Log.i("AlarmManager", String.format("Auto Refresh Restarted with %s Delay", triggerAt));
-            alarmManagerActive = true;
-        }
-    }
-
-    public static void resetTimer() {
-        if (alarmManager != null && pendingIntent != null) {
-            alarmManager.cancel(pendingIntent);
-            if (!alarmManagerActive) {
-                alarmManager.setInexactRepeating(AlarmManager.RTC, interval, interval, pendingIntent);
-                Log.i("AlarmManager", String.format("Auto Refresh Restarted with %s Delay", interval));
-            }
-            alarmManagerActive = true;
-        }
+        flipBoardEnabled = !flipBoardEnabled;
     }
 
     private boolean isMyServiceRunning(Class<?> serviceClass) {
@@ -270,12 +243,11 @@ public class MainActivity extends AppCompatActivity {
                     } else {
                         bLoginButton.setEnabled(false);
                         if (!isMyServiceRunning(AmbientService.class)) {
-                            bEnableTimer.setText("Disable Service");
+                            bEnableTimer.setText("Stop");
                             startForegroundService(new Intent(MainActivity.this, AmbientService.class));
-                            alarmManager.setInexactRepeating(AlarmManager.RTC, 5000, interval, pendingIntent);
-                            alarmManagerActive = true;
                         }
                         bEnableTimer.setEnabled(true);
+                        bDownloadNowButton.setEnabled(true);
                     }
                 }
             });
@@ -287,7 +259,7 @@ public class MainActivity extends AppCompatActivity {
     public static void refreshSettings() {
         Log.i("Settings", String.format("Interval Time: %s", prefs.getString("ltCycleTime", "Default")));
         interval = Integer.parseInt(prefs.getString("ltCycleTime", "60")) * 60 * 1000;
-        serverName = prefs.getString("etServerName", "beta.seq.moe");
+        serverName = prefs.getString("etServerName", "seq.moe");
         displayName = prefs.getString("etDisplayName", "Untitled");
         folderName = prefs.getString("etFolder", "");
         searchQuery = prefs.getString("etSearch", "");

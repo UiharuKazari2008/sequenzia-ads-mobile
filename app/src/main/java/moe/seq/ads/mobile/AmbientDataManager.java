@@ -9,7 +9,6 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
-import android.os.PowerManager;
 import android.util.Log;
 import android.widget.Toast;
 import androidx.annotation.RequiresApi;
@@ -29,11 +28,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 public class AmbientDataManager {
     public static String lastNotification = null;
     public static Boolean lastNotificationFavRemove = false;
+    public static Boolean pendingJob = false;
 
     Context context;
 
@@ -46,6 +48,7 @@ public class AmbientDataManager {
         void onResponse(Boolean completed);
     }
     public void ambientRefresh (AmbientRefreshResponse completed) {
+        AmbientDataManager.pendingJob = true;
         MainActivity.refreshSettings();
         SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
 
@@ -178,52 +181,35 @@ public class AmbientDataManager {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void nextImage(Boolean firstTry) {
-        if (isDisplayOn()) {
-            if (lastNotification != null) {
-                File oldFile = new File(context.getFilesDir(), String.format("adi-%s", lastNotification));
-                try {
-                    boolean delete = oldFile.delete();
-                    if (oldFile.exists()) {
-                        context.deleteFile(oldFile.getAbsolutePath());
-                    } else if (delete) {
-                        Log.i("SetImage/Img", String.format("Deleted old file: %s", oldFile.getName()));
-                    } else {
-                        Log.e("SetImage/Img", String.format("Failed to delete old file: %s", oldFile.getName()));
-                    }
-                } catch (Exception e) {
-                    Log.e("SetImage/Img", String.format("Failed to delete %s: %s", oldFile.getAbsolutePath(), e));
+        AmbientDataManager.pendingJob = true;
+        deleteLastImage();
+        MainActivity.refreshSettings();
+        File[] downloadedImages = context.getFilesDir().listFiles();
+        if (downloadedImages != null && downloadedImages.length > 0) {
+            int randomIndex = new Random().nextInt(downloadedImages.length);
+            String imageEid = downloadedImages[randomIndex].getName().split("-", 2)[1];
+            Log.i("NextImage", String.format("Images in store: %s - Next Image ID: %s", downloadedImages.length, imageEid));
+            setImage(imageEid);
+        } else if (firstTry) {
+            Log.i("NextImage", "No images in store");
+            ambientRefresh(new AmbientDataManager.AmbientRefreshResponse() {
+                @Override
+                public void onError(String message) {
+                    Toast.makeText(context, String.format("AmbientDataManager Failure: %s", message), Toast.LENGTH_SHORT).show();
+                    MainActivity.pendingRefresh = true;
+                     AmbientDataManager.pendingJob = false;
                 }
-            }
-            MainActivity.refreshSettings();
-            File[] downloadedImages = context.getFilesDir().listFiles();
-            if (downloadedImages != null && downloadedImages.length > 0) {
-                int randomIndex = new Random().nextInt(downloadedImages.length);
-                String imageEid = downloadedImages[randomIndex].getName().split("-", 2)[1];
-                Log.i("NextImage", String.format("Images in store: %s - Next Image ID: %s", downloadedImages.length, imageEid));
-                setImage(imageEid);
-            } else if (firstTry) {
-                Log.i("NextImage", "No images in store");
-                ambientRefresh(new AmbientDataManager.AmbientRefreshResponse() {
-                    @Override
-                    public void onError(String message) {
-                        Toast.makeText(context, String.format("AmbientDataManager Failure: %s", message), Toast.LENGTH_SHORT).show();
-                        MainActivity.pendingRefresh = true;
-                    }
 
-                    @Override
-                    public void onResponse(Boolean completed) {
-
-                    }
-                });
-            }
-        } else {
-            Log.i("NextImage", "Ignored, Wait till next wake up");
-            MainActivity.stopTimer();
-            MainActivity.pendingIntentActive = true;
+                @Override
+                public void onResponse(Boolean completed) {
+                    AmbientDataManager.pendingJob = false;
+                }
+            });
         }
     }
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void setImage(String imageEid) {
+        AmbientDataManager.pendingJob = true;
         Log.i("SetImage", String.format("Request to set image ID %s as wallpaper", imageEid));
 
         SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
@@ -236,17 +222,37 @@ public class AmbientDataManager {
             @Override
             public void onError(String message) {
                 Log.e("SetImage/Img", String.format("Wallpaper Error: %s", message));
+                AmbientDataManager.pendingJob = false;
             }
 
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onResponse(Boolean completed) {
+                MainActivity.lastChangeTime = System.currentTimeMillis();
                 lastNotificationFavRemove = false;
                 lastNotification = imageEid;
                 updateNotification();
                 ambientHistorySet(imageEid);
+                AmbientDataManager.pendingJob = false;
             }
         });
+    }
+    public void deleteLastImage() {
+        if (lastNotification != null) {
+            File oldFile = new File(context.getFilesDir(), String.format("adi-%s", lastNotification));
+            try {
+                boolean delete = oldFile.delete();
+                if (oldFile.exists()) {
+                    context.deleteFile(oldFile.getAbsolutePath());
+                } else if (delete) {
+                    Log.i("SetImage/Img", String.format("Deleted old file: %s", oldFile.getName()));
+                } else {
+                    Log.e("SetImage/Img", String.format("Failed to delete old file: %s", oldFile.getName()));
+                }
+            } catch (Exception e) {
+                Log.e("SetImage/Img", String.format("Failed to delete %s: %s", oldFile.getAbsolutePath(), e));
+            }
+        }
     }
 
     public void ambientFavorite (int index) {
@@ -277,9 +283,11 @@ public class AmbientDataManager {
         final String url = String.format("https://%s/actions/v1", MainActivity.serverName);
 
         StringRequest apiRequest = new StringRequest(Request.Method.POST, url, new com.android.volley.Response.Listener<String>() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onResponse(String response) {
                 Toast.makeText(context, "Image was favoured!", Toast.LENGTH_SHORT).show();
+                updateNotification();
             }
         }, new com.android.volley.Response.ErrorListener() {
             @Override
@@ -381,6 +389,7 @@ public class AmbientDataManager {
                     if (imagesToDownload.length - 1 == finalI) {
                         nextImage(false);
                         completed.onResponse(true);
+                        AmbientDataManager.pendingJob = false;
                     }
                 }
 
@@ -390,6 +399,7 @@ public class AmbientDataManager {
                     if (imagesToDownload.length - 1 == finalI) {
                         nextImage(false);
                         completed.onResponse(true);
+                        AmbientDataManager.pendingJob = false;
                     }
                 }
             });
@@ -436,7 +446,7 @@ public class AmbientDataManager {
             if (notificationContents.length() >= 5) {
                 notification.setContentText(notificationContents);
             }
-            if (MainActivity.alarmManagerActive) {
+            if (MainActivity.flipBoardEnabled) {
                 notification.addAction(R.drawable.ic_pause, "Pause", pauseImageIntent);
             } else {
                 notification.addAction(R.drawable.ic_play, "Resume", pauseImageIntent);
@@ -465,11 +475,5 @@ public class AmbientDataManager {
             notification.setStyle(mediaStyle);
             manager.notify(9854, notification.build());
         }
-    }
-
-    private Boolean isDisplayOn() {
-        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        if (powerManager.isInteractive()){ return true; }
-        return false;
     }
 }
