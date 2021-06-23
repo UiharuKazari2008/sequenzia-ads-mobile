@@ -30,9 +30,12 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
 
         if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
             Log.i("Broadcast", "Screen Awake!");
-            refreshTimer.cancel();
+            if (refreshTimer != null) {
+                refreshTimer.cancel();
+                refreshTimer = null;
+            }
         } else if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
-            if (MainActivity.pendingRefresh && MainActivity.flipBoardEnabled && !AmbientDataManager.pendingJob) {
+            if (MainActivity.pendingRefresh && MainActivity.flipBoardEnabled) {
                 Log.i("Broadcast", "Sleep with Pending download!");
                 ambientDataManager.ambientRefresh(new AmbientDataManager.AmbientRefreshResponse() {
                     @Override
@@ -45,9 +48,13 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                         MainActivity.pendingRefresh = false;
                     }
                 });
-            } else if (MainActivity.lastChangeTime + MainActivity.interval < System.currentTimeMillis() && MainActivity.flipBoardEnabled && !AmbientDataManager.pendingJob) {
+            } else if (MainActivity.lastChangeTime + MainActivity.interval < System.currentTimeMillis() && MainActivity.flipBoardEnabled) {
                 Log.i("Broadcast", "Sleep with Pending update!");
                 ambientDataManager.nextImage(true);
+                if (refreshTimer != null) {
+                    refreshTimer.cancel();
+                    refreshTimer = null;
+                }
             } else if (MainActivity.flipBoardEnabled) {
                 MainActivity.refreshSettings();
                 final TimerTask callNextImage = new TimerTask() {
@@ -59,6 +66,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                             public void run() {
                                 Log.i("TimerEvent", "Getting Next Image!");
                                 ambientDataManager.nextImage(true);
+                                refreshTimer = null;
                             }
                         });
                     }

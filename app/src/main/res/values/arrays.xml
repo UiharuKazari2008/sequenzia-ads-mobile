@@ -1,5 +1,6 @@
 <resources>
     <string-array name="settingsRefreshTimeNames">
+        <item>On Sleep</item>
         <item>5 minutes</item>
         <item>10 minutes</item>
         <item>15 minutes</item>
@@ -10,6 +11,7 @@
         <item>8 Hours</item>
     </string-array>
     <string-array name="settingsRefreshTimeValues">
+        <item>1</item>
         <item>5</item>
         <item>10</item>
         <item>15</item>
