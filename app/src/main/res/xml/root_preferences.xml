@@ -61,8 +61,14 @@
                 android:defaultValue=""
                 android:selectAllOnFocus="true"
                 android:singleLine="true"
-                android:title="Folder" android:key="etFolder"
-                android:summary="Folders to go search (Example: art:*) or leave empty"/>
+                android:title="Album ID" android:key="etAlbum"
+                android:summary="Album ID (Do not use album names) or leave empty\nIf the album is private you must own it"/>
+        <EditTextPreference
+                android:defaultValue=""
+                android:selectAllOnFocus="true"
+                android:singleLine="true"
+                android:title="Folder Path" android:key="etFolder"
+                android:summary="Folders to go search (Example: art:*) or leave empty\nMUST be a classic path (server:class:channel)"/>
         <EditTextPreference
                 android:defaultValue=""
                 android:selectAllOnFocus="true"

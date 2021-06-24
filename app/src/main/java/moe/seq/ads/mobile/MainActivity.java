@@ -32,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
     static String serverName;
     static String displayName;
     static String folderName;
+    static String albumName;
     static String searchQuery;
     static String mimResolution;
     static Boolean aspectRatio;
@@ -262,6 +263,7 @@ public class MainActivity extends AppCompatActivity {
         serverName = prefs.getString("etServerName", "seq.moe");
         displayName = prefs.getString("etDisplayName", "Untitled");
         folderName = prefs.getString("etFolder", "");
+        albumName = prefs.getString("etAlbum", "");
         searchQuery = prefs.getString("etSearch", "");
         aspectRatio = !prefs.getBoolean("swRatio", false);
         pinsOnly = prefs.getBoolean("swPins", false);

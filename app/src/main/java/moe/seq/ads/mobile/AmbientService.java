@@ -37,6 +37,7 @@ public class AmbientService extends Service {
         IntentFilter screenStateFilter = new IntentFilter();
         screenStateFilter.addAction(Intent.ACTION_SCREEN_ON);
         screenStateFilter.addAction(Intent.ACTION_SCREEN_OFF);
+        screenStateFilter.setPriority(100);
         registerReceiver(ambientBroadcastReceiver, screenStateFilter);
 
         return START_STICKY;
