@@ -95,10 +95,14 @@
                 android:defaultValue="0"
                 android:summary="Images should be Light, Dark, or both"
                 android:title="Brightness" />
-        <SwitchPreference
-                android:defaultValue="false"
-                android:title="Bypass Ratio Enforcement" android:key="swRatio"
-                android:summary="Ensures that only portrait images are returned"/>
+        <ListPreference
+                android:dialogTitle="Aspect Ratio"
+                android:entries="@array/settingsRatioNames"
+                android:entryValues="@array/settingsRatioVales"
+                android:key="ltRatio"
+                android:defaultValue="0.9-2.1"
+                android:summary="Images should be Portrait, Landscape, or both"
+                android:title="Aspect Ratio" />
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Force Center Alignment" android:key="swCenter"

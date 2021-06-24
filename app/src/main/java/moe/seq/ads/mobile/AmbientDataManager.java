@@ -64,7 +64,7 @@ public class AmbientDataManager {
         if (MainActivity.albumName.length() > 0 ) { albumName = String.format("album=%s&", MainActivity.albumName); }
         if (MainActivity.folderName.length() > 2 && MainActivity.folderName.contains(":")) { folderName = String.format("folder=%s&", MainActivity.folderName); }
         if (MainActivity.searchQuery.length() > 2) { searchQuery = String.format("search=%s&", MainActivity.searchQuery); }
-        if (MainActivity.aspectRatio) { aspectRatio = "ratio=1-2.1&"; }
+        if (MainActivity.aspectRatio.length() > 2) { aspectRatio = String.format("ratio=%s&", MainActivity.aspectRatio); }
         if (MainActivity.pinsOnly) { pinsOnly = "pins=true&"; }
         if (MainActivity.nsfwResults) { nsfwResults = "nsfw=true&"; }
         if (MainActivity.maxAge > 0) { maxAge = String.format("numdays=%s&", MainActivity.maxAge); }
@@ -464,9 +464,9 @@ public class AmbientDataManager {
             Notification.MediaStyle mediaStyle = new Notification.MediaStyle();
             if (!imageObject.get("fileFav").getAsBoolean() && !lastNotificationFavRemove) {
                 notification.addAction(R.drawable.ic_fav, "Favorite", favImageIntent);
-                mediaStyle.setShowActionsInCompactView(1,2);
+                mediaStyle.setShowActionsInCompactView(0,1,2);
             } else {
-                mediaStyle.setShowActionsInCompactView(1);
+                mediaStyle.setShowActionsInCompactView(0,1);
             }
             try {
                 final String fileName = imageObject.get("fileName").getAsString();

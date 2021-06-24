@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
@@ -35,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
     static String albumName;
     static String searchQuery;
     static String mimResolution;
-    static Boolean aspectRatio;
+    static String aspectRatio;
     static Boolean pinsOnly;
     static Boolean centerImage;
     static Boolean nsfwResults;
@@ -89,6 +90,74 @@ public class MainActivity extends AppCompatActivity {
             bLoginButton.setEnabled(false);
         } else {
             bEnableTimer.setText("Start");
+        }
+
+        Intent intent = getIntent();
+        if (Intent.ACTION_VIEW.equals(intent.getAction())) {
+            Uri uri = intent.getData();
+            SharedPreferences.Editor prefsEditor = prefs.edit();
+            String _minRes = uri.getQueryParameter("minres");
+            String _imageRatio = uri.getQueryParameter("ratio");
+            String _folderName = uri.getQueryParameter("folder");
+            String _albumId = uri.getQueryParameter("album");
+            String _searchQuery = uri.getQueryParameter("search");
+            String _maxAge = uri.getQueryParameter("numdays");
+            String _pinsOnly = uri.getQueryParameter("pins");
+            String _nsfwEnabled = uri.getQueryParameter("pins");
+            String _colorSelect = uri.getQueryParameter("brightness");
+            String _serverName = uri.getQueryParameter("server_hostname");
+
+            Log.i("WebLoader", String.format("Got URI: %s %s", intent.getData(), _nsfwEnabled));
+
+            if (_serverName != null && _serverName.length() > 0){
+                prefsEditor.putString("etServerName", _serverName);
+            }
+            if (_folderName != null && _folderName.length() > 0){
+                prefsEditor.putString("etFolder", _folderName);
+            } else {
+                prefsEditor.putString("etFolder", null);
+            }
+            if (_albumId != null && _albumId.length() > 0){
+                prefsEditor.putString("etAlbum", _albumId);
+            } else {
+                prefsEditor.putString("etAlbum", null);
+            }
+            if (_searchQuery != null && _searchQuery.length() > 0){
+                prefsEditor.putString("etSearch", _searchQuery);
+            } else {
+                prefsEditor.putString("etSearch", null);
+            }
+            if (_imageRatio != null && _imageRatio.length() > 0){
+                prefsEditor.putString("ltRatio", _imageRatio);
+            }
+            if (_minRes != null && _minRes.length() > 0){
+                prefsEditor.putString("ltMinRes", _minRes);
+            }
+            if (_colorSelect != null && _colorSelect.length() > 0){
+                prefsEditor.putString("ltBright", _colorSelect);
+            } else {
+                prefsEditor.putString("ltBright", "0");
+            }
+            if (_pinsOnly != null && _pinsOnly.length() > 0 && !_pinsOnly.equals("false")){
+                prefsEditor.putBoolean("swPins", true);
+            } else {
+                prefsEditor.putBoolean("swPins", false);
+            }
+            if (_nsfwEnabled != null && _nsfwEnabled.length() > 0 && !_nsfwEnabled.equals("false")){
+                prefsEditor.putBoolean("swNSFW", true);
+            } else {
+                prefsEditor.putBoolean("swNSFW", false);
+            }
+            if (_maxAge != null && _maxAge.length() > 0){
+                prefsEditor.putString("ltMaxAge", _maxAge);
+            } else {
+                prefsEditor.putString("ltMaxAge", "0");
+            }
+
+            Toast.makeText(MainActivity.this, "Got Search from Sequenzia Web!", Toast.LENGTH_SHORT).show();
+
+            prefsEditor.apply();
+            sendBroadcast(new Intent(MainActivity.this, AmbientBroadcastReceiver.class).setAction("REFRESH_IMAGES"));
         }
 
         // Attempt to login
@@ -265,7 +334,7 @@ public class MainActivity extends AppCompatActivity {
         folderName = prefs.getString("etFolder", "");
         albumName = prefs.getString("etAlbum", "");
         searchQuery = prefs.getString("etSearch", "");
-        aspectRatio = !prefs.getBoolean("swRatio", false);
+        aspectRatio = prefs.getString("ltRatio", "0.9-2.1");
         pinsOnly = prefs.getBoolean("swPins", false);
         centerImage = prefs.getBoolean("swCenter", false);
         enableHistory = prefs.getBoolean("swHistory", true);
