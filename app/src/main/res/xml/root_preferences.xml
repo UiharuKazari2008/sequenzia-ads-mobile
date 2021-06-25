@@ -5,32 +5,55 @@
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Enable Service at Boot" android:key="swOnBoot"
+                android:enabled="false"
                 android:summary="Start ADS when phone is restarted"/>
-        <ListPreference
-                android:dialogTitle="Cycle Time"
-                android:entries="@array/settingsRefreshTimeNames"
-                android:entryValues="@array/settingsRefreshTimeValues"
-                android:key="ltCycleTime"
-                android:defaultValue="60"
-                android:summary="Time between wallpaper changes"
-                android:title="Cycle Time" />
-        <ListPreference
-                android:dialogTitle="Screen Selection"
-                android:entries="@array/settingsWallpaperSelectionNames"
-                android:entryValues="@array/settingsWallpaperSelectionValues"
-                android:key="ltWallSelection"
-                android:summary="Select what wallpapers to change, Wallpaper and or Lockscreen"
-                android:defaultValue="0"
-                android:title="Wallpapers to Modify" />
         <SwitchPreference
                 android:defaultValue="true"
                 android:title="Enable History" android:key="swHistory"
                 android:summary="Sends Displayed Images to Ambient Display History"/>
     </PreferenceCategory>
     <PreferenceCategory
+            android:title="Homescreen">
+        <SwitchPreference
+                android:defaultValue="true"
+                android:title="Sync Wallpapers" android:key="swSyncWallpaper"
+                android:summary="Set Homescreen and Lockscreen to the same image"/>
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Alternate Wallpapers" android:key="swAlternateWallpaper"
+                android:summary="When Sync Wallpapers is enabled\nAlternate between homescreen and lockscreen wallpapers"/>
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Change Homescreen" android:key="swEnableWallpaper"
+                android:summary="Change Homescreen Wallpaper"/>
+        <ListPreference
+                android:dialogTitle="Homescreen Lifetime"
+                android:entries="@array/settingsRefreshTimeNames"
+                android:entryValues="@array/settingsRefreshTimeValues"
+                android:key="ltCycleTime1"
+                android:defaultValue="60"
+                android:summary="Time between homescreen changes"
+                android:title="Wallpaper Lifetime" />
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="Lockscreen">
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Change Lockscreen" android:key="swEnableLockscreen"
+                android:summary="Change Lockscreen Wallpaper"/>
+        <ListPreference
+                android:dialogTitle="Lockscreen Lifetime"
+                android:entries="@array/settingsRefreshTimeNames"
+                android:entryValues="@array/settingsRefreshTimeValues"
+                android:key="ltCycleTime2"
+                android:defaultValue="60"
+                android:summary="Time between lockscreen changes"
+                android:title="Wallpaper Lifetime" />
+    </PreferenceCategory>
+    <PreferenceCategory
             android:title="Request Options">
         <EditTextPreference
-                android:defaultValue="beta.seq.moe"
+                android:defaultValue="seq.moe"
                 android:selectAllOnFocus="true"
                 android:singleLine="true"
                 android:title="Server" android:key="etServerName"
@@ -49,67 +72,9 @@
                 android:summary="Download these many images for offline access"
                 android:defaultValue="5"
                 android:title="Number of Images" />
-        <ListPreference
-                android:dialogTitle="Resolution"
-                android:entries="@array/settingsMinResNames"
-                android:entryValues="@array/settingsMinResValues"
-                android:key="ltMinRes"
-                android:defaultValue="720"
-                android:summary="Minimum Resolution of Images"
-                android:title="Minimum Resolutions" />
-        <EditTextPreference
-                android:defaultValue=""
-                android:selectAllOnFocus="true"
-                android:singleLine="true"
-                android:title="Album ID" android:key="etAlbum"
-                android:summary="Album ID (Do not use album names) or leave empty\nIf the album is private you must own it"/>
-        <EditTextPreference
-                android:defaultValue=""
-                android:selectAllOnFocus="true"
-                android:singleLine="true"
-                android:title="Folder Path" android:key="etFolder"
-                android:summary="Folders to go search (Example: art:*) or leave empty\nMUST be a classic path (server:class:channel)"/>
-        <EditTextPreference
-                android:defaultValue=""
-                android:selectAllOnFocus="true"
-                android:singleLine="true"
-                android:title="Search" android:key="etSearch"
-                android:summary="Search query to use (Supports AND and OR) or leave empty"/>
-        <SwitchPreference
-                android:defaultValue="false"
-                android:title="Only Favorites" android:key="swPins"
-                android:summary="Only returns images you have favoured"/>
-        <ListPreference
-                android:dialogTitle="Max Age"
-                android:entries="@array/settingsMaxAgeNames"
-                android:entryValues="@array/settingsMaxAgeValues"
-                android:key="ltMaxAge"
-                android:defaultValue="0"
-                android:summary="Only return images within these days"
-                android:title="Max Age" />
-        <ListPreference
-                android:dialogTitle="Brightness"
-                android:entries="@array/settingsBrightnessNames"
-                android:entryValues="@array/settingsBrightnessVales"
-                android:key="ltBright"
-                android:defaultValue="0"
-                android:summary="Images should be Light, Dark, or both"
-                android:title="Brightness" />
-        <ListPreference
-                android:dialogTitle="Aspect Ratio"
-                android:entries="@array/settingsRatioNames"
-                android:entryValues="@array/settingsRatioVales"
-                android:key="ltRatio"
-                android:defaultValue="0.9-2.1"
-                android:summary="Images should be Portrait, Landscape, or both"
-                android:title="Aspect Ratio" />
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Force Center Alignment" android:key="swCenter"
                 android:summary="Ensures that images are always centered (Depends on your launcher, only use if images are pushed into the corner)"/>
-        <SwitchPreference
-                android:defaultValue="false"
-                android:title="Show NSFW Images" android:key="swNSFW"
-                android:summary="Allow NSFW Images to be returned"/>
     </PreferenceCategory>
 </PreferenceScreen>

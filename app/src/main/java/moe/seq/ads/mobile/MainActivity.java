@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -18,6 +19,10 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class MainActivity extends AppCompatActivity {
 
     // button to set the home screen wallpaper when clicked
@@ -25,30 +30,17 @@ public class MainActivity extends AppCompatActivity {
     private Button bEnableTimer;
     private Button bDownloadNowButton;
     private TextView tAuthText, tErrorText;
-    public static final String NOTIFICATION_CHANNEL_ID = "moe.seq.ads.mobile.display";
-    public static final String channelName = "Ambient Display Service";
+    public static final String NOTIFICATION_CHANNEL_ID_1 = "moe.seq.ads.mobile.display.1";
+    public static final String NOTIFICATION_CHANNEL_ID_2 = "moe.seq.ads.mobile.display.2";
+    public static final String channelName1 = "Ambient Display Service - Wallpaper";
+    public static final String channelName2 = "Ambient Display Service - Lockscreen";
 
     static SharedPreferences prefs;
-    static int interval;
-    static String serverName;
-    static String displayName;
-    static String folderName;
-    static String albumName;
-    static String searchQuery;
-    static String mimResolution;
-    static String aspectRatio;
-    static Boolean pinsOnly;
-    static Boolean centerImage;
-    static Boolean nsfwResults;
-    static Boolean enableHistory;
-    static int maxAge;
-    static int imagesToKeep;
-    static int wallSelection;
-    static int colorSelection;
 
-    public static Boolean flipBoardEnabled = false;
-    public static Boolean pendingRefresh = false;
-    public static long lastChangeTime = 0;
+    public static Boolean[] flipBoardEnabled = new Boolean[] {false, false};
+    public static Boolean[] pendingRefresh = new Boolean[] {false, false};
+    public static Boolean[] pendingTimeReset = new Boolean[] {false, false};
+    public static long[] lastChangeTime = new long[] {0, 0};
 
     public AuthWare authware;
     private SharedPreferences authPref;
@@ -62,15 +54,20 @@ public class MainActivity extends AppCompatActivity {
         // Notification Manager
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         assert notificationManager != null;
-        NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_NONE);
-        notificationManager.createNotificationChannel(channel);
-        channel.setLightColor(Color.YELLOW);
-        channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-        channel.setDescription("Foreground Service for Ambient Display Service");
+        NotificationChannel channel1 = new NotificationChannel(NOTIFICATION_CHANNEL_ID_1, channelName1, NotificationManager.IMPORTANCE_MIN);
+        notificationManager.createNotificationChannel(channel1);
+        channel1.setLightColor(Color.YELLOW);
+        channel1.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        channel1.setDescription("Foreground Service for Ambient Display Service");
+
+        NotificationChannel channel2 = new NotificationChannel(NOTIFICATION_CHANNEL_ID_2, channelName2, NotificationManager.IMPORTANCE_MIN);
+        notificationManager.createNotificationChannel(channel2);
+        channel2.setLightColor(Color.YELLOW);
+        channel2.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        channel2.setDescription("Foreground Service for Ambient Display Service");
 
         // Application Settings Manager
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        refreshSettings();
         authPref = this.getSharedPreferences("seq.authWare", Context.MODE_PRIVATE);
 
         // Generate New AuthWare
@@ -83,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
         tAuthText = findViewById(R.id.codeHolder);
         tErrorText = findViewById(R.id.errorText);
 
-        if (flipBoardEnabled) {
+        if (flipBoardEnabled[0] || flipBoardEnabled[1]) {
             bEnableTimer.setText("Stop");
             bEnableTimer.setEnabled(true);
             bDownloadNowButton.setEnabled(true);
@@ -95,69 +92,132 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = getIntent();
         if (Intent.ACTION_VIEW.equals(intent.getAction())) {
             Uri uri = intent.getData();
-            SharedPreferences.Editor prefsEditor = prefs.edit();
-            String _minRes = uri.getQueryParameter("minres");
-            String _imageRatio = uri.getQueryParameter("ratio");
-            String _folderName = uri.getQueryParameter("folder");
-            String _albumId = uri.getQueryParameter("album");
-            String _searchQuery = uri.getQueryParameter("search");
-            String _maxAge = uri.getQueryParameter("numdays");
-            String _pinsOnly = uri.getQueryParameter("pins");
-            String _nsfwEnabled = uri.getQueryParameter("pins");
-            String _colorSelect = uri.getQueryParameter("brightness");
-            String _serverName = uri.getQueryParameter("server_hostname");
+            String _sType = uri.getQueryParameter("setType");
+            if (_sType != null && _sType.length() > 0) {
+                SharedPreferences settingsPrefs = null;
+                SharedPreferences.Editor prefsEditor = prefs.edit();
+                switch (_sType) {
+                    case "0":
+                        settingsPrefs = this.getSharedPreferences("seq.settings.wallpaper", Context.MODE_PRIVATE);
+                        Toast.makeText(MainActivity.this, "Got Both Settings from Sequenzia Web", Toast.LENGTH_SHORT).show();
+                        prefsEditor.putBoolean("swSyncWallpaper", true).apply();
+                        break;
+                    case "1":
+                        settingsPrefs = this.getSharedPreferences("seq.settings.wallpaper", Context.MODE_PRIVATE);
+                        Toast.makeText(MainActivity.this, "Got Wallpaper Settings from Sequenzia Web", Toast.LENGTH_SHORT).show();
+                        if (prefs.getBoolean("swSyncWallpaper", false)) {
+                            SharedPreferences wallPrefs = this.getSharedPreferences("seq.settings.wallpaper", Context.MODE_PRIVATE);
+                            SharedPreferences lockPrefs = this.getSharedPreferences("seq.settings.lockscreen", Context.MODE_PRIVATE);
+                            Map<String, ?> wallSettings = wallPrefs.getAll();
+                            for (Map.Entry<String, ?> entry: wallSettings.entrySet()) {
+                                lockPrefs.edit().putString(entry.getKey(), entry.getValue().toString()).apply();
+                            }
 
-            Log.i("WebLoader", String.format("Got URI: %s %s", intent.getData(), _nsfwEnabled));
+                        }
+                        prefsEditor.putBoolean("swSyncWallpaper", false).apply();
+                        break;
+                    case "2":
+                        settingsPrefs = this.getSharedPreferences("seq.settings.lockscreen", Context.MODE_PRIVATE);
+                        Toast.makeText(MainActivity.this, "Got Lockscreen Settings from Sequenzia Web", Toast.LENGTH_SHORT).show();
+                        prefsEditor.putBoolean("swSyncWallpaper", false).apply();
+                        break;
+                    default:
+                        Toast.makeText(MainActivity.this, "Invalid Setting Type from Sequenzia Web", Toast.LENGTH_SHORT).show();
+                        break;
+                }
+                if (settingsPrefs != null) {
+                    if (isMyServiceRunning(AmbientService.class)) {
+                        stopService(new Intent(MainActivity.this, AmbientService.class));
+                    }
+                    SharedPreferences.Editor settings = settingsPrefs.edit();
 
-            if (_serverName != null && _serverName.length() > 0){
-                prefsEditor.putString("etServerName", _serverName);
-            }
-            if (_folderName != null && _folderName.length() > 0){
-                prefsEditor.putString("etFolder", _folderName);
-            } else {
-                prefsEditor.putString("etFolder", null);
-            }
-            if (_albumId != null && _albumId.length() > 0){
-                prefsEditor.putString("etAlbum", _albumId);
-            } else {
-                prefsEditor.putString("etAlbum", null);
-            }
-            if (_searchQuery != null && _searchQuery.length() > 0){
-                prefsEditor.putString("etSearch", _searchQuery);
-            } else {
-                prefsEditor.putString("etSearch", null);
-            }
-            if (_imageRatio != null && _imageRatio.length() > 0){
-                prefsEditor.putString("ltRatio", _imageRatio);
-            }
-            if (_minRes != null && _minRes.length() > 0){
-                prefsEditor.putString("ltMinRes", _minRes);
-            }
-            if (_colorSelect != null && _colorSelect.length() > 0){
-                prefsEditor.putString("ltBright", _colorSelect);
-            } else {
-                prefsEditor.putString("ltBright", "0");
-            }
-            if (_pinsOnly != null && _pinsOnly.length() > 0 && !_pinsOnly.equals("false")){
-                prefsEditor.putBoolean("swPins", true);
-            } else {
-                prefsEditor.putBoolean("swPins", false);
-            }
-            if (_nsfwEnabled != null && _nsfwEnabled.length() > 0 && !_nsfwEnabled.equals("false")){
-                prefsEditor.putBoolean("swNSFW", true);
-            } else {
-                prefsEditor.putBoolean("swNSFW", false);
-            }
-            if (_maxAge != null && _maxAge.length() > 0){
-                prefsEditor.putString("ltMaxAge", _maxAge);
-            } else {
-                prefsEditor.putString("ltMaxAge", "0");
-            }
+                    String _minRes = uri.getQueryParameter("minres");
+                    String _imageRatio = uri.getQueryParameter("ratio");
+                    String _folderName = uri.getQueryParameter("folder");
+                    String _albumId = uri.getQueryParameter("album");
+                    String _searchQuery = uri.getQueryParameter("search");
+                    String _maxAge = uri.getQueryParameter("numdays");
+                    String _pinsOnly = uri.getQueryParameter("pins");
+                    String _nsfwEnabled = uri.getQueryParameter("nsfw");
+                    String _colorSelect = uri.getQueryParameter("brightness");
+                    String _serverName = uri.getQueryParameter("server_hostname");
 
-            Toast.makeText(MainActivity.this, "Got Search from Sequenzia Web!", Toast.LENGTH_SHORT).show();
+                    Log.i("WebLoader", String.format("Got URI: %s %s", intent.getData(), _nsfwEnabled));
 
-            prefsEditor.apply();
-            sendBroadcast(new Intent(MainActivity.this, AmbientBroadcastReceiver.class).setAction("REFRESH_IMAGES"));
+                    if (_serverName != null && _serverName.length() > 0) {
+                        prefsEditor.putString("etServerName", _serverName).apply();
+                    }
+                    if (_folderName != null && _folderName.length() > 0) {
+                        settings.putString("folder", _folderName);
+                    } else {
+                        settings.remove("folder");
+                    }
+                    if (_albumId != null && _albumId.length() > 0) {
+                        settings.putString("album", _albumId);
+                    } else {
+                        settings.remove("album");
+                    }
+                    if (_searchQuery != null && _searchQuery.length() > 0) {
+                        settings.putString("search", _searchQuery);
+                    } else {
+                        settings.remove("search");
+                    }
+                    if (_imageRatio != null && _imageRatio.length() > 0) {
+                        settings.putString("ratio", _imageRatio);
+                    } else {
+                        settings.putString("ratio", "0.9-2.1");
+                    }
+                    if (_minRes != null && _minRes.length() > 0) {
+                        settings.putString("minRes", _minRes);
+                    } else {
+                        settings.remove("minRes");
+                    }
+                    if (_colorSelect != null && _colorSelect.length() > 0) {
+                        settings.putString("bright", _colorSelect);
+                    } else {
+                        settings.remove("bright");
+                    }
+                    if (_pinsOnly != null && _pinsOnly.length() > 0) {
+                        settings.putString("pins", _pinsOnly);
+                    } else {
+                        settings.remove("pins");
+                    }
+                    if (_nsfwEnabled != null && _nsfwEnabled.length() > 0) {
+                        settings.putString("nsfwEnabled", _nsfwEnabled);
+                    } else {
+                        settings.putString("nsfwEnabled", "false");
+                    }
+                    if (_maxAge != null && _maxAge.length() > 0) {
+                        settings.putString("maxAge", _maxAge);
+                    } else {
+                        settings.remove("maxAge");
+                    }
+
+                    settings.apply();
+                    Toast.makeText(MainActivity.this, "Updated Settings", Toast.LENGTH_SHORT).show();
+
+                    lastChangeTime[0] = 0;
+                    lastChangeTime[1] = 0;
+                    flipBoardEnabled[0] = true;
+                    flipBoardEnabled[1] = true;
+                    Handler hander = new Handler();
+                    final TimerTask callRefresh = new TimerTask() {
+                        @Override
+                        public void run() {
+                            // post a runnable to the handler
+                            hander.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Log.i("TimerEvent", "Restarting Service!");
+                                    startService(new Intent(MainActivity.this, AmbientService.class));
+                                }
+                            });
+                        }
+                    };
+                    new Timer().schedule(callRefresh, 5000);
+                    //sendBroadcast(new Intent(MainActivity.this, AmbientBroadcastReceiver.class).setAction("REFRESH_IMAGES"));
+                }
+            }
         }
 
         // Attempt to login
@@ -193,7 +253,7 @@ public class MainActivity extends AppCompatActivity {
                                     dialog.setNeutralButton("via Browser",
                                             new DialogInterface.OnClickListener() {
                                                 public void onClick(DialogInterface dialog, int which) {
-                                                    Uri fileURL = Uri.parse(String.format("https://%s//transfer?type=0&deviceID=%s", MainActivity.serverName, sessionId));
+                                                    Uri fileURL = Uri.parse(String.format("https://%s//transfer?type=0&deviceID=%s", prefs.getString("etServerName", "seq.moe"), sessionId));
                                                     MainActivity.this.startActivity(new Intent(Intent.ACTION_VIEW, fileURL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                                                 }
                                             });
@@ -245,9 +305,11 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 if (isMyServiceRunning(AmbientService.class)) {
                     stopService(new Intent(MainActivity.this, AmbientService.class));
-                    if (flipBoardEnabled) {
-                        lastChangeTime = 0;
-                        flipBoardEnabled = false;
+                    if (flipBoardEnabled[0] || flipBoardEnabled[1]) {
+                        lastChangeTime[0] = 0;
+                        lastChangeTime[1] = 0;
+                        flipBoardEnabled[0] = false;
+                        flipBoardEnabled[1] = false;
                     }
                     bEnableTimer.setText("Start");
                 } else {
@@ -265,9 +327,11 @@ public class MainActivity extends AppCompatActivity {
                 if (!isMyServiceRunning(AmbientService.class)) {
                     startService(new Intent(MainActivity.this, AmbientService.class));
                 }
-                if (!flipBoardEnabled) {
-                    lastChangeTime = 0;
-                    flipBoardEnabled = true;
+                if (!flipBoardEnabled[0] || !flipBoardEnabled[1]) {
+                    lastChangeTime[0] = 0;
+                    lastChangeTime[1] = 0;
+                    flipBoardEnabled[0] = true;
+                    flipBoardEnabled[1] = true;
                 }
                 bEnableTimer.setText("Disable");
             }
@@ -282,8 +346,8 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public static void toggleTimer() {
-        flipBoardEnabled = !flipBoardEnabled;
+    public static void toggleTimer(Boolean timerSelection) {
+        flipBoardEnabled[(timerSelection) ? 0 : 1] = !flipBoardEnabled[(timerSelection) ? 0 : 1];
     }
 
     private boolean isMyServiceRunning(Class<?> serviceClass) {
@@ -324,25 +388,5 @@ public class MainActivity extends AppCompatActivity {
         } else {
             bLoginButton.setEnabled(true);
         }
-    }
-
-    public static void refreshSettings() {
-        Log.i("Settings", String.format("Interval Time: %s", prefs.getString("ltCycleTime", "Default")));
-        interval = Integer.parseInt(prefs.getString("ltCycleTime", "60")) * 60 * 1000;
-        serverName = prefs.getString("etServerName", "seq.moe");
-        displayName = prefs.getString("etDisplayName", "Untitled");
-        folderName = prefs.getString("etFolder", "");
-        albumName = prefs.getString("etAlbum", "");
-        searchQuery = prefs.getString("etSearch", "");
-        aspectRatio = prefs.getString("ltRatio", "0.9-2.1");
-        pinsOnly = prefs.getBoolean("swPins", false);
-        centerImage = prefs.getBoolean("swCenter", false);
-        enableHistory = prefs.getBoolean("swHistory", true);
-        wallSelection = Integer.parseInt(prefs.getString("ltWallSelection", "0"));
-        maxAge = Integer.parseInt(prefs.getString("ltMaxAge", "0"));
-        imagesToKeep = Integer.parseInt(prefs.getString("ltImageCount", "5"));
-        colorSelection = Integer.parseInt(prefs.getString("ltBright", "0"));
-        mimResolution = prefs.getString("ltMinRes", "720");
-        nsfwResults = prefs.getBoolean("swNSFW", false);
     }
 }

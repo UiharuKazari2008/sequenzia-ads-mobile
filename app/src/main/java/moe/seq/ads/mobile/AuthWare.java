@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.util.Log;
 import android.widget.Toast;
+import androidx.preference.PreferenceManager;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -21,11 +22,13 @@ public class AuthWare {
         this.context = context;
     }
 
+
     public interface AuthWareResponseisValid {
         void onError(String message);
         void onResponse(Boolean loginSuccess, String authCode, String sessionID);
     }
     public void validateLogin (Boolean useLoginToken, AuthWareResponseisValid isValid) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
         if (authComplete) {
             // Fast Return if already logged in.
             isValid.onResponse(true, null, null);
@@ -40,7 +43,7 @@ public class AuthWare {
                 Log.v("AuthWare", String.format("Found Stored Static Login Key: %s", tokenLogin));
             }
             // Generate URL
-            final String url = String.format("https://%s/ping?json=true%s", MainActivity.serverName, tokenLogin);
+            final String url = String.format("https://%s/ping?json=true%s", prefs.getString("etServerName", "seq.moe"), tokenLogin);
 
             // Request JSON version of Ping request
             JsonObjectRequest loginCheckRequest = new JsonObjectRequest(Request.Method.GET, url, null,
@@ -133,6 +136,8 @@ public class AuthWare {
     }
 
     public void clearLogin () {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
+
         Log.i("AuthWare", "Logout Requested");
         // Get Static Login Key and Erase it!
         SharedPreferences sharedPref = context.getSharedPreferences("seq.authWare", Context.MODE_PRIVATE);
@@ -142,7 +147,7 @@ public class AuthWare {
         authComplete = false;
 
 
-        final String url = String.format("https://%s/discord/destroy", MainActivity.serverName);
+        final String url = String.format("https://%s/discord/destroy", prefs.getString("etServerName", "seq.moe"));
 
         // Request to close session
         StringRequest destroyRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
@@ -167,8 +172,10 @@ public class AuthWare {
         void onResponse(Boolean validTokenResponse);
     }
     public void getStaticLogin (AuthWareResponseStaticKey staticKey) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
+
         Log.v("AuthWare/StaticLogin", "Requested to get static login token");
-        final String url = String.format("https://%s/discord/token?action=get", MainActivity.serverName);
+        final String url = String.format("https://%s/discord/token?action=get", prefs.getString("etServerName", "seq.moe"));
         StringRequest tokenRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
@@ -193,8 +200,10 @@ public class AuthWare {
         NetworkManager.getInstance(context).addToRequestQueue(tokenRequest);
     }
     public void newStaticLogin (AuthWareResponseStaticKey staticKey) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
+
         Log.v("AuthWare/StaticLogin", "Requested to generate static login token");
-        final String url = String.format("https://%s/discord/token?action=renew", MainActivity.serverName);
+        final String url = String.format("https://%s/discord/token?action=renew", prefs.getString("etServerName", "seq.moe"));
         StringRequest tokenRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
@@ -219,8 +228,10 @@ public class AuthWare {
         void onResponse(Boolean ok);
     }
     public void refreshSession (AuthWareRefreshAccount cb) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
+
         Log.v("AuthWare/Session", "Session Refresh Requested");
-        final String url = String.format("https://%s/discord/refresh", MainActivity.serverName);
+        final String url = String.format("https://%s/discord/refresh", prefs.getString("etServerName", "seq.moe"));
         StringRequest tokenRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {

@@ -9,9 +9,11 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
+import android.os.PowerManager;
 import android.util.Log;
 import android.widget.Toast;
 import androidx.annotation.RequiresApi;
+import androidx.preference.PreferenceManager;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -25,14 +27,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 public class AmbientDataManager {
-    public static String lastNotification = null;
-    public static Boolean lastNotificationFavRemove = false;
-    public static Boolean pendingJob = false;
+    public static String[] lastNotification = new String[] {null, null};
+    public static Boolean[] lastNotificationFavRemove = new Boolean[] {false, false};
 
     Context context;
 
@@ -40,47 +39,58 @@ public class AmbientDataManager {
         this.context = context;
     }
 
-    public interface AmbientRefreshResponse {
+    public interface AmbientRefreshRequest {
         void onError(String message);
         void onResponse(Boolean completed);
     }
-    public void ambientRefresh (AmbientRefreshResponse completed) {
-        AmbientDataManager.pendingJob = true;
-        MainActivity.refreshSettings();
-        SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
+    public void ambientRefresh (Boolean wallpaperSelection, AmbientRefreshRequest completed) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences settingsPrefs = null;
 
-        String minResolution = "";
-        String folderName = "";
-        String albumName = "";
-        String searchQuery = "";
-        String aspectRatio = "";
-        String pinsOnly = "";
-        String nsfwResults = "nsfw=false&";
-        String maxAge = "";
-        String imagesToKeep = "";
-        String colorSelection = "";
-
-
-        if (MainActivity.albumName.length() > 0 ) { albumName = String.format("album=%s&", MainActivity.albumName); }
-        if (MainActivity.folderName.length() > 2 && MainActivity.folderName.contains(":")) { folderName = String.format("folder=%s&", MainActivity.folderName); }
-        if (MainActivity.searchQuery.length() > 2) { searchQuery = String.format("search=%s&", MainActivity.searchQuery); }
-        if (MainActivity.aspectRatio.length() > 2) { aspectRatio = String.format("ratio=%s&", MainActivity.aspectRatio); }
-        if (MainActivity.pinsOnly) { pinsOnly = "pins=true&"; }
-        if (MainActivity.nsfwResults) { nsfwResults = "nsfw=true&"; }
-        if (MainActivity.maxAge > 0) { maxAge = String.format("numdays=%s&", MainActivity.maxAge); }
-        if (MainActivity.imagesToKeep > 1) { imagesToKeep = String.format("num=%s&", MainActivity.imagesToKeep); }
-        if (!MainActivity.mimResolution.equals("0")) { minResolution = String.format("minres=%s&", MainActivity.mimResolution); }
-        if (MainActivity.colorSelection == 1) {
-            colorSelection = "dark=false&";
-        } else if (MainActivity.colorSelection == 2) {
-            colorSelection = "dark=true&";
+        String filePrefix = "wallpaper";
+        if (wallpaperSelection) {
+            settingsPrefs = context.getSharedPreferences("seq.settings.wallpaper", Context.MODE_PRIVATE);
+        } else {
+            settingsPrefs = context.getSharedPreferences("seq.settings.lockscreen", Context.MODE_PRIVATE);
+            filePrefix = "lockscreen";
         }
-        String displayName = String.format("displayname=ADSMobile-%s", MainActivity.displayName);
+        SharedPreferences sharedPref = context.getSharedPreferences(String.format("seq.ambientData.%s", filePrefix), Context.MODE_PRIVATE);
+        SharedPreferences.Editor prefsEditor = sharedPref.edit();
+        Map<String, ?> allOldKeys = sharedPref.getAll();
 
-        final String url = String.format("https://%s/ambient-refresh?nocds=true&%s%s%s%s%s%s%s%s%s%s%s", MainActivity.serverName, imagesToKeep, colorSelection, minResolution, folderName, albumName, searchQuery, aspectRatio, pinsOnly, nsfwResults, maxAge, displayName);
+        String minResolution = settingsPrefs.getString("minRes", "");
+        String folderName = settingsPrefs.getString("folder", "");
+        String albumName = settingsPrefs.getString("album", "");
+        String searchQuery = settingsPrefs.getString("search", "");
+        String aspectRatio = settingsPrefs.getString("ratio", "");
+        String pinsOnly = settingsPrefs.getString("pins", "");
+        String nsfwResults = String.format("nsfw=%s&", settingsPrefs.getString("nsfwEnabled", "false"));
+        String maxAge = settingsPrefs.getString("maxAge", "");
+        String imagesToKeep = String.format("num=%s&", prefs.getString("ltImageCount", "5"));
+        String colorSelection = settingsPrefs.getString("bright", "");
+        String displayName = String.format("displayname=ADSMobile-%s", settingsPrefs.getString("etDisplayName", "Untitled"));
+
+        if (albumName.length() > 0 ) { albumName = String.format("album=%s&", albumName); }
+        if (folderName.length() > 2 && folderName.contains(":")) { folderName = String.format("folder=%s&", folderName); }
+        if (searchQuery.length() > 2) { searchQuery = String.format("search=%s&", searchQuery); }
+        if (aspectRatio.length() > 2) { aspectRatio = String.format("ratio=%s&", aspectRatio); }
+        if (maxAge.length() > 0) { maxAge = String.format("numdays=%s&", maxAge); }
+        if (pinsOnly.length() > 0) { pinsOnly = String.format("pins=%s&", pinsOnly); }
+        if (minResolution.length() > 0) { minResolution = String.format("minres=%s&", minResolution); }
+        if (colorSelection.equals("1")) {
+            colorSelection = "dark=false&";
+        } else if (colorSelection.equals("2")) {
+            colorSelection = "dark=true&";
+        } else {
+            colorSelection = "";
+        }
+
+
+        final String url = String.format("https://%s/ambient-refresh?nocds=true&%s%s%s%s%s%s%s%s%s%s%s", prefs.getString("etServerName", "seq.moe"), imagesToKeep, colorSelection, minResolution, folderName, albumName, searchQuery, aspectRatio, pinsOnly, nsfwResults, maxAge, displayName);
 
         Log.i("ADM/Dispatch", url);
 
+        String finalFilePrefix = filePrefix;
         JsonObjectRequest ambientRefreshRequest = new JsonObjectRequest(Request.Method.GET, url, null,
                 new Response.Listener<JSONObject>() {
                     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -92,9 +102,8 @@ public class AmbientDataManager {
                             JSONArray imageResponse = response.getJSONArray("randomImagev2");
                             if (imageResponse.length() > 0) {
                                 String[][] dataArray = new String[imageResponse.length()][2];
-
-                                SharedPreferences.Editor clearEditorPref = sharedPref.edit().clear();
-                                clearEditorPref.apply();
+                                ArrayList<String> imagesDownloaded = new ArrayList<>();
+                                ArrayList<String> imagesKeys = new ArrayList<>();
 
                                 // Proccess Images in Response
                                 for (int i = 0; i < imageResponse.length(); i++) {
@@ -106,13 +115,15 @@ public class AmbientDataManager {
                                     final String fullImageURL = singleImage.getString("fullImage");
                                     final String previewImageURL = singleImage.getString("previewImage");
                                     final int imageEid = singleImage.getInt("eid");
-                                    final String fileName = String.format("adi-%s", imageEid);
-                                    final String previewName = String.format("adp-%s", imageEid);
-                                    final int imageColor = android.graphics.Color.rgb(
-                                            Integer.parseInt(singleImage.getString("colorR")),
-                                            Integer.parseInt(singleImage.getString("colorG")),
-                                            Integer.parseInt(singleImage.getString("colorB")));
-                                    Log.i("Test", String.format("Color: %s", imageColor));
+                                    final String fileName = String.format("adi-%s-%s", finalFilePrefix, imageEid);
+                                    final String previewName = String.format("adp-%s-%s", finalFilePrefix, imageEid);
+                                    if (singleImage.getString("colorR") != null) {
+                                        final int imageColor = android.graphics.Color.rgb(
+                                                Integer.parseInt(singleImage.getString("colorR")),
+                                                Integer.parseInt(singleImage.getString("colorG")),
+                                                Integer.parseInt(singleImage.getString("colorB")));
+                                        dataImage.put("fileColor", imageColor);
+                                    }
                                     dataImage.put("fileName", fileName);
                                     dataImage.put("fileUrl", fullImageURL);
                                     dataImage.put("filePreviewUrl", previewImageURL);
@@ -122,7 +133,6 @@ public class AmbientDataManager {
                                     dataImage.put("fileEid", imageEid);
                                     dataImage.put("fileId", singleImage.getInt("id"));
                                     dataImage.put("fileChannelId", singleImage.getString("channelId"));
-                                    dataImage.put("fileColor", imageColor);
                                     dataImage.put("location", String.format("%s:/%s/%s",
                                             singleImage.getString("serverName").toUpperCase(),
                                             singleImage.getString("className"),
@@ -132,20 +142,19 @@ public class AmbientDataManager {
                                     // Save Object to Storage
                                     Gson gson = new Gson();
                                     String json = gson.toJson(dataImage);
-                                    SharedPreferences.Editor prefsEditor = sharedPref.edit();
-                                    prefsEditor.putString(String.format("ambientResponse-%s", imageEid), json);
-                                    prefsEditor.apply();
-                                    dataArray[i][0] = fileName;
-                                    dataArray[i][1] = fullImageURL;
-                                }
+                                    prefsEditor.putString(String.format("ambientResponse-%s", imageEid), json).apply();
 
-                                // Request Images to be downloaded
-                                File[] oldImages = context.getFilesDir().listFiles();
-                                downloadImages(dataArray, new DownloadImageResponse() {
-                                    @Override
-                                    public void onResponse(Boolean ok) {
-                                        completed.onResponse(true);
-                                        MainActivity.pendingRefresh = false;
+                                    dataArray[i][0] = fileName;
+                                    imagesDownloaded.add(fileName);
+                                    imagesKeys.add(String.format("ambientResponse-%s", imageEid));
+                                    dataArray[i][1] = fullImageURL;
+                                    if (i == imageResponse.length() -1) {
+                                        // Request Images to be downloaded
+                                        File[] oldImages = context.getFilesDir().listFiles((new FileFilter(){
+                                            public boolean accept(File file) {
+                                                return file.getName().contains(String.format("adi-%s-", finalFilePrefix)) && !imagesDownloaded.contains(file.getName());
+                                            }
+                                        }));
                                         if (oldImages != null && oldImages.length > 0) {
                                             for (File file : oldImages) {
                                                 if (!file.isDirectory()) {
@@ -161,9 +170,21 @@ public class AmbientDataManager {
                                                     }
                                                 }
                                             }
+                                            for (Map.Entry<String, ?> entry: allOldKeys.entrySet()) {
+                                                if (!imagesKeys.contains(entry.getKey())) {
+                                                    sharedPref.edit().remove(entry.getKey()).apply();
+                                                }
+                                            }
                                         }
+                                        downloadImages(dataArray, new DownloadImageResponse() {
+                                            @Override
+                                            public void onResponse(Boolean ok) {
+                                                completed.onResponse(true);
+                                                MainActivity.pendingRefresh[(wallpaperSelection) ? 0 : 1] = false;
+                                            }
+                                        });
                                     }
-                                });
+                                }
                             } else {
                                 Log.e("ADM/Response", "No Results Found");
                                 completed.onError("No Results for your settings, please check via Sequenzia if they will return results!");
@@ -183,72 +204,146 @@ public class AmbientDataManager {
 
         NetworkManager.getInstance(context).addToRequestQueue(ambientRefreshRequest);
     }
+    public interface AmbientRefreshResponse {
+        void onError(String message);
+        void onResponse(Boolean completed);
+    }
+    public void ambientRefreshRequest (AmbientRefreshResponse completed) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean syncWallpapers = prefs.getBoolean("swSyncWallpaper", true);
+        boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
+        boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
+        if (syncWallpapers && (enableLockscreen || enableWallpaper)) {
+            ambientRefresh(true, new AmbientDataManager.AmbientRefreshRequest() {
+                @Override
+                public void onError(String message) {
+                    completed.onError(message);
+                }
+
+                @RequiresApi(api = Build.VERSION_CODES.N)
+                @Override
+                public void onResponse(Boolean ok) {
+                    completed.onResponse(true);
+                    nextImage(false, true);
+                }
+            });
+        } else if (enableWallpaper && enableLockscreen) {
+            ambientRefresh(true, new AmbientDataManager.AmbientRefreshRequest() {
+                @Override
+                public void onError(String message) {
+                    completed.onError(message);
+                }
+
+                @RequiresApi(api = Build.VERSION_CODES.N)
+                @Override
+                public void onResponse(Boolean ok) {
+                    nextImage(false, true);
+
+                    ambientRefresh(false, new AmbientDataManager.AmbientRefreshRequest() {
+                        @Override
+                        public void onError(String message) {
+                            completed.onError(message);
+                        }
+
+                        @RequiresApi(api = Build.VERSION_CODES.N)
+                        @Override
+                        public void onResponse(Boolean ok) {
+                            completed.onResponse(true);
+                            nextImage(false, false);
+                        }
+                    });
+                }
+            });
+        } else if (enableLockscreen || enableWallpaper) {
+            ambientRefresh(enableWallpaper, new AmbientDataManager.AmbientRefreshRequest() {
+                @Override
+                public void onError(String message) {
+                    completed.onError(message);
+                }
+
+                @RequiresApi(api = Build.VERSION_CODES.N)
+                @Override
+                public void onResponse(Boolean ok) {
+                    completed.onResponse(true);
+                    nextImage(false, enableWallpaper);
+                }
+            });
+        }
+    }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public void nextImage(Boolean firstTry) {
-        AmbientDataManager.pendingJob = true;
-        deleteLastImage();
-        MainActivity.refreshSettings();
+    public void nextImage(Boolean firstTry, Boolean imageSelection) {
+        deleteLastImage(imageSelection);
+        String filePrefix = "wallpaper";
+        if (!imageSelection) {
+            filePrefix = "lockscreen";
+        }
+        String finalFilePrefix = filePrefix;
         File[] downloadedImages = context.getFilesDir().listFiles((new FileFilter(){
             public boolean accept(File file) {
-                return file.getName().contains("adi-");
+                return file.getName().contains(String.format("adi-%s-", finalFilePrefix));
             }
         }));
         if (downloadedImages != null && downloadedImages.length > 0) {
             int randomIndex = new Random().nextInt(downloadedImages.length);
-            String imageEid = downloadedImages[randomIndex].getName().split("-", 2)[1];
+            String imageEid = downloadedImages[randomIndex].getName().split("-", 3)[2];
             Log.i("NextImage", String.format("Images in store: %s - Next Image ID: %s", downloadedImages.length, imageEid));
-            setImage(imageEid);
+            setImage(imageEid, imageSelection);
         } else if (firstTry) {
             Log.i("NextImage", "No images in store");
-            ambientRefresh(new AmbientDataManager.AmbientRefreshResponse() {
+            ambientRefreshRequest(new AmbientDataManager.AmbientRefreshResponse() {
                 @Override
                 public void onError(String message) {
                     Toast.makeText(context, String.format("AmbientDataManager Failure: %s", message), Toast.LENGTH_SHORT).show();
-                    MainActivity.pendingRefresh = true;
-                     AmbientDataManager.pendingJob = false;
+                    MainActivity.pendingRefresh[(imageSelection) ? 0 : 1] = true;
                 }
 
                 @Override
                 public void onResponse(Boolean completed) {
-                    AmbientDataManager.pendingJob = false;
+
                 }
             });
         }
     }
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private void setImage(String imageEid) {
-        AmbientDataManager.pendingJob = true;
+    private void setImage(String imageEid, Boolean imageSelection) {
         Log.i("SetImage", String.format("Request to set image ID %s as wallpaper", imageEid));
-
-        SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
-        final String filename = String.format("adi-%s", imageEid);
+        String filePrefix = "wallpaper";
+        if (!imageSelection) {
+            filePrefix = "lockscreen";
+        }
+        final String filename = String.format("adi-%s-%s", filePrefix, imageEid);
 
         Log.i("SetImage", String.format("Using file: %s", filename));
 
         ImageManager imageManager = new ImageManager(context);
-        imageManager.setWallpaperImage(filename, new ImageManager.ImageManagerResponse() {
+        imageManager.setWallpaperImage(filename, imageSelection, new ImageManager.ImageManagerResponse() {
             @Override
             public void onError(String message) {
                 Log.e("SetImage/Img", String.format("Wallpaper Error: %s", message));
-                AmbientDataManager.pendingJob = false;
             }
 
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onResponse(Boolean completed) {
-                MainActivity.lastChangeTime = System.currentTimeMillis();
-                lastNotificationFavRemove = false;
-                lastNotification = imageEid;
-                updateNotification();
+                MainActivity.lastChangeTime[(imageSelection) ? 0 : 1] = System.currentTimeMillis();
+                if (!isDisplayOn()) {
+                    MainActivity.pendingTimeReset[(imageSelection) ? 0 : 1] = true;
+                }
+                lastNotificationFavRemove[(imageSelection) ? 0 : 1] = false;
+                lastNotification[(imageSelection) ? 0 : 1] = imageEid;
+                updateNotification(imageSelection);
                 ambientHistorySet(imageEid);
-                AmbientDataManager.pendingJob = false;
             }
         });
     }
-    public void deleteLastImage() {
-        if (lastNotification != null) {
-            File oldFile = new File(context.getFilesDir(), String.format("adi-%s", lastNotification));
+    public void deleteLastImage(Boolean imageSelection) {
+        String filePrefix = "wallpaper";
+        if (!imageSelection) {
+            filePrefix = "lockscreen";
+        }
+        if (lastNotification[(imageSelection) ? 0 : 1 ] != null) {
+            File oldFile = new File(context.getFilesDir(), String.format("adi-%s-%s", filePrefix, lastNotification[(imageSelection) ? 0 : 1 ]));
             try {
                 boolean delete = oldFile.delete();
                 if (oldFile.exists()) {
@@ -264,12 +359,13 @@ public class AmbientDataManager {
         }
     }
 
-    public void ambientFavorite (int index) {
+    public void ambientFavorite(int index, boolean imageSelection) {
         String channelId = "";
         String messageEid = "";
 
-        SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
-        final String responseData = sharedPref.getString(String.format("ambientResponse-%s", index), null);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences sharedPref = context.getSharedPreferences(String.format("seq.ambientData.%s", (imageSelection) ? "wallpaper" : "lockscreen"), Context.MODE_PRIVATE);
+        final String responseData = sharedPref.getString(String.format("ambientResponse-%s",index), null);
         if (responseData != null) {
             JsonObject imageObject = null;
             try {
@@ -289,14 +385,14 @@ public class AmbientDataManager {
         String finalChannelId = channelId;
         String finalMessageEid = messageEid;
 
-        final String url = String.format("https://%s/actions/v1", MainActivity.serverName);
+        final String url = String.format("https://%s/actions/v1", prefs.getString("etServerName", "seq.moe"));
 
         StringRequest apiRequest = new StringRequest(Request.Method.POST, url, new com.android.volley.Response.Listener<String>() {
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onResponse(String response) {
                 Toast.makeText(context, "Image was favoured!", Toast.LENGTH_SHORT).show();
-                updateNotification();
+                updateNotification(imageSelection);
             }
         }, new com.android.volley.Response.ErrorListener() {
             @Override
@@ -319,7 +415,8 @@ public class AmbientDataManager {
         NetworkManager.getInstance(context).addToRequestQueue(apiRequest);
     }
     public void ambientHistorySet (String imageEid) {
-        final String url = String.format("https://%s/ambient-history?command=set&displayname=ADSMobile-%s&imageid=%s", MainActivity.serverName, MainActivity.displayName, imageEid);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        final String url = String.format("https://%s/ambient-history?command=set&displayname=ADSMobile-%s&imageid=%s", prefs.getString("etServerName", "seq.moe"), prefs.getString("etDisplayName", "Untitled"), imageEid);
 
         StringRequest apiRequest = new StringRequest(Request.Method.GET, url, new com.android.volley.Response.Listener<String>() {
             @Override
@@ -396,9 +493,7 @@ public class AmbientDataManager {
                 public void onError(String message) {
                     Toast.makeText(context, String.format("Failed to download image %s", url), Toast.LENGTH_SHORT).show();
                     if (imagesToDownload.length - 1 == finalI) {
-                        nextImage(false);
                         completed.onResponse(true);
-                        AmbientDataManager.pendingJob = false;
                     }
                 }
 
@@ -406,9 +501,7 @@ public class AmbientDataManager {
                 @Override
                 public void onResponse(Boolean ok) {
                     if (imagesToDownload.length - 1 == finalI) {
-                        nextImage(false);
                         completed.onResponse(true);
-                        AmbientDataManager.pendingJob = false;
                     }
                 }
             });
@@ -416,53 +509,62 @@ public class AmbientDataManager {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
-    public void toggleTimer () {
-        MainActivity.toggleTimer();
-        updateNotification();
+    public void toggleTimer (Boolean timerSelection) {
+        MainActivity.toggleTimer(timerSelection);
+        updateNotification(timerSelection);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
-    public void updateNotification() {
+    public void updateNotification(Boolean imageSelection) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         assert manager != null;
-        SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
+        String filePrefix = "wallpaper";
+        if (!imageSelection) {
+            filePrefix = "lockscreen";
+        }
+        SharedPreferences sharedPref = context.getSharedPreferences(String.format("seq.ambientData.%s", filePrefix), Context.MODE_PRIVATE);
         JsonObject imageObject = null;
-        final String responseData = sharedPref.getString(String.format("ambientResponse-%s", lastNotification), null);
+        final String requestedImage = String.format("ambientResponse-%s", lastNotification[(imageSelection) ? 0 : 1 ]);
+        final String responseData = sharedPref.getString(requestedImage, null);
+        Log.v("Notification", String.format("Requesting Image : %s", requestedImage));
         if (responseData != null) {
             try {
                 imageObject = new Gson().fromJson(responseData, JsonObject.class).getAsJsonObject("nameValuePairs");
             } catch (JsonIOException e) {
                 e.printStackTrace();
             }
+        } else {
+            Log.e("Notification", "Failed to get data for notification");
         }
 
         if (imageObject != null) {
-            PendingIntent nextImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction("NEXT_IMAGE"), 0);
-            PendingIntent openImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("OPEN_IMAGE:%s", lastNotification)), 0);
-            PendingIntent favImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("FAV_IMAGE:%s", lastNotification)), 0);
-            PendingIntent pauseImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction("TOGGLE_TIMER"), 0);
+            PendingIntent nextImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("NEXT_IMAGE:%s", (imageSelection) ? "0" : "1")), 0);
+            PendingIntent openImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("OPEN_IMAGE:%s:%s", (imageSelection) ? "0" : "1", lastNotification[(imageSelection) ? 0 : 1])), 0);
+            PendingIntent favImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("FAV_IMAGE:%s:%s", (imageSelection) ? "0" : "1", lastNotification[(imageSelection) ? 0 : 1])), 0);
+            PendingIntent pauseImageIntent = PendingIntent.getBroadcast(context, 0, new Intent(context, AmbientBroadcastReceiver.class).setAction(String.format("TOGGLE_TIMER:%s", (imageSelection) ? "0" : "1")), 0);
 
-            final String notificationText = String.format("%s", imageObject.get("location").getAsString());
+            final String notificationText = String.format("%s - %s", imageObject.get("fileDate").getAsString(), imageObject.get("location").getAsString());
 
-            Notification.Builder notification = new Notification.Builder(context, MainActivity.NOTIFICATION_CHANNEL_ID)
+            Notification.Builder notification = new Notification.Builder(context, (imageSelection) ? MainActivity.NOTIFICATION_CHANNEL_ID_1 : MainActivity.NOTIFICATION_CHANNEL_ID_2)
                     .setSmallIcon(R.drawable.ic_notification)
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
                     .setTicker(notificationText)
                     .setContentTitle(notificationText)
-                    .setSubText(imageObject.get("fileDate").getAsString())
-                    .setContentIntent(openImageIntent);
+                    .setSubText((imageSelection) ? "Wallpaper" : "Lockscreen")
+                    .setContentIntent(openImageIntent)
+                    .setOngoing(true);
             final String notificationContents = imageObject.get("fileContents").getAsString();
             if (notificationContents.length() >= 5) {
                 notification.setContentText(notificationContents);
             }
-            if (MainActivity.flipBoardEnabled) {
+            if (MainActivity.flipBoardEnabled[(imageSelection) ? 0 : 1]) {
                 notification.addAction(R.drawable.ic_pause, "Pause", pauseImageIntent);
             } else {
                 notification.addAction(R.drawable.ic_play, "Resume", pauseImageIntent);
             }
             notification.addAction(R.drawable.ic_next, "Next", nextImageIntent);
             Notification.MediaStyle mediaStyle = new Notification.MediaStyle();
-            if (!imageObject.get("fileFav").getAsBoolean() && !lastNotificationFavRemove) {
+            if (!imageObject.get("fileFav").getAsBoolean() && !lastNotificationFavRemove[(imageSelection) ? 0 : 1]) {
                 notification.addAction(R.drawable.ic_fav, "Favorite", favImageIntent);
                 mediaStyle.setShowActionsInCompactView(0,1,2);
             } else {
@@ -482,7 +584,16 @@ public class AmbientDataManager {
                 Log.e("NotifiManager", String.format("Failed to load bitmap for notification: %s", e));
             }
             notification.setStyle(mediaStyle);
-            manager.notify(9854, notification.build());
+            manager.notify((imageSelection) ? 100 : 200, notification.build());
+        } else {
+            Log.e("Notification", "Failed to get data for notification");
         }
     }
+
+    private Boolean isDisplayOn() {
+        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        if (powerManager.isInteractive()){ return true; }
+        return false;
+    }
+
 }

@@ -10,6 +10,7 @@ import android.os.Build;
 import android.util.Log;
 import android.view.WindowManager;
 import androidx.annotation.RequiresApi;
+import androidx.preference.PreferenceManager;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,33 +30,47 @@ public class ImageManager {
         void onResponse(Boolean completed);
     }
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public void setWallpaperImage (String fileName, ImageManagerResponse cb) {
-        SharedPreferences sharedPref = context.getSharedPreferences("seq.ambientData", Context.MODE_PRIVATE);
+    public void setWallpaperImage(String fileName, Boolean imageSelection, ImageManagerResponse cb) {
         WallpaperManager manager = WallpaperManager.getInstance(context);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean centerImage = prefs.getBoolean("swCenter", false);
 
         try {
             File file = new File(fileName);
             FileInputStream fileStream = context.openFileInput(file.getName());
             Bitmap bitmap = BitmapFactory.decodeStream(fileStream);
             try {
-                int displaySelect = WallpaperManager.FLAG_SYSTEM + WallpaperManager.FLAG_LOCK;
-                if (MainActivity.wallSelection == 3) {
-                    final boolean lastSet = sharedPref.getBoolean("displayFlip", false);
-                    if (lastSet) {
-                        displaySelect = WallpaperManager.FLAG_LOCK;
+                int displaySelect;
+                if (prefs.getBoolean("swSyncWallpaper", true)) {
+                    boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
+                    boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
+                    boolean alternateWallpapers = prefs.getBoolean("swAlternateWallpaper", false);
+                    displaySelect = 0;
+                    if (alternateWallpapers) {
+                        final boolean lastSet = prefs.getBoolean("displayFlip", false);
+                        if (lastSet) {
+                            displaySelect = WallpaperManager.FLAG_LOCK;
+                        } else {
+                            displaySelect = WallpaperManager.FLAG_SYSTEM;
+                        }
+                        SharedPreferences.Editor prefsEditor = prefs.edit();
+                        prefsEditor.putBoolean("displayFlip", !lastSet);
+                        prefsEditor.apply();
                     } else {
-                        displaySelect = WallpaperManager.FLAG_SYSTEM;
+                        if (enableLockscreen) {
+                            displaySelect += WallpaperManager.FLAG_LOCK;
+                        }
+                        if (enableWallpaper) {
+                            displaySelect += WallpaperManager.FLAG_SYSTEM;
+                        }
                     }
-                    SharedPreferences.Editor prefsEditor = sharedPref.edit();
-                    prefsEditor.putBoolean("displayFlip", !lastSet);
-                    prefsEditor.apply();
-                } else if (MainActivity.wallSelection == 1) {
+                } else if (imageSelection) {
                     displaySelect = WallpaperManager.FLAG_SYSTEM;
-                } else if (MainActivity.wallSelection == 2) {
+                } else {
                     displaySelect = WallpaperManager.FLAG_LOCK;
                 }
 
-                if (MainActivity.centerImage) {
+                if (centerImage) {
                     manager.setBitmap(cropBitmapFromCenterAndScreenSize(bitmap), null, false, displaySelect);
                 } else {
                     manager.setBitmap(bitmap, null, false, displaySelect);
