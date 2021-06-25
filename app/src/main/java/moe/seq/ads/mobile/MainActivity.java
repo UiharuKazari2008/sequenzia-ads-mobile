@@ -19,6 +19,7 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -108,11 +109,18 @@ public class MainActivity extends AppCompatActivity {
                         if (prefs.getBoolean("swSyncWallpaper", false)) {
                             SharedPreferences wallPrefs = this.getSharedPreferences("seq.settings.wallpaper", Context.MODE_PRIVATE);
                             SharedPreferences lockPrefs = this.getSharedPreferences("seq.settings.lockscreen", Context.MODE_PRIVATE);
+                            Map<String, ?> lockSettings = lockPrefs.getAll();
                             Map<String, ?> wallSettings = wallPrefs.getAll();
+                            ArrayList<String> newWallSettings = new ArrayList<>();
                             for (Map.Entry<String, ?> entry: wallSettings.entrySet()) {
                                 lockPrefs.edit().putString(entry.getKey(), entry.getValue().toString()).apply();
+                                newWallSettings.add(entry.getKey());
                             }
-
+                            for (Map.Entry<String, ?> entry: lockSettings.entrySet()) {
+                                if (!newWallSettings.contains(entry.getKey())){
+                                    lockPrefs.edit().remove(entry.getKey()).apply();
+                                }
+                            }
                         }
                         prefsEditor.putBoolean("swSyncWallpaper", false).apply();
                         break;
