@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -13,6 +14,7 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.RequiresApi;
@@ -29,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
     // button to set the home screen wallpaper when clicked
     private Button bLoginButton;
     private Button bEnableTimer;
-    private Button bDownloadNowButton;
+    private ImageView bDownloadNowButton;
     private TextView tAuthText, tErrorText;
     public static final String NOTIFICATION_CHANNEL_ID_1 = "moe.seq.ads.mobile.display.1";
     public static final String NOTIFICATION_CHANNEL_ID_2 = "moe.seq.ads.mobile.display.2";
@@ -51,6 +53,22 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        androidx.appcompat.app.ActionBar actionBar = this.getSupportActionBar();
+        actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
+        actionBar.setDisplayShowCustomEnabled(true);
+        actionBar.setCustomView(R.layout.action_bar_main);
+        ColorDrawable colorDrawable
+                = new ColorDrawable(Color.parseColor("#FF9800"));
+
+        // Set BackgroundDrawable
+        actionBar.setBackgroundDrawable(colorDrawable);
+
+        //getSupportActionBar().setElevation(0);
+        View view = getSupportActionBar().getCustomView();
+
+        bDownloadNowButton = view.findViewById(R.id.download_button);
+        ImageView bSettingsButton = view.findViewById(R.id.settings_button);
 
         // Notification Manager
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -76,8 +94,8 @@ public class MainActivity extends AppCompatActivity {
 
         bLoginButton = findViewById(R.id.loginButton);
         bEnableTimer = findViewById(R.id.startRefreshTimer);
-        bDownloadNowButton = findViewById(R.id.downloadImages);
-        Button bSettingsButton = findViewById(R.id.settingsButton);
+        //bDownloadNowButton = findViewById(R.id.downloadImages);
+        //Button bSettingsButton = findViewById(R.id.settingsButton);
         tAuthText = findViewById(R.id.codeHolder);
         tErrorText = findViewById(R.id.errorText);
 
@@ -97,15 +115,15 @@ public class MainActivity extends AppCompatActivity {
             if (_sType != null && _sType.length() > 0) {
                 SharedPreferences settingsPrefs = null;
                 SharedPreferences.Editor prefsEditor = prefs.edit();
+                String typeOfImport = "";
                 switch (_sType) {
                     case "0":
                         settingsPrefs = this.getSharedPreferences("seq.settings.wallpaper", Context.MODE_PRIVATE);
-                        Toast.makeText(MainActivity.this, "Got Both Settings from Sequenzia Web", Toast.LENGTH_SHORT).show();
-                        prefsEditor.putBoolean("swSyncWallpaper", true).apply();
+                        typeOfImport=  "Synced Wallpaper & Lockscreen";
                         break;
                     case "1":
                         settingsPrefs = this.getSharedPreferences("seq.settings.wallpaper", Context.MODE_PRIVATE);
-                        Toast.makeText(MainActivity.this, "Got Wallpaper Settings from Sequenzia Web", Toast.LENGTH_SHORT).show();
+                        typeOfImport=  "Wallpaper";
                         if (prefs.getBoolean("swSyncWallpaper", false)) {
                             SharedPreferences wallPrefs = this.getSharedPreferences("seq.settings.wallpaper", Context.MODE_PRIVATE);
                             SharedPreferences lockPrefs = this.getSharedPreferences("seq.settings.lockscreen", Context.MODE_PRIVATE);
@@ -122,108 +140,125 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             }
                         }
-                        prefsEditor.putBoolean("swSyncWallpaper", false).apply();
                         break;
                     case "2":
                         settingsPrefs = this.getSharedPreferences("seq.settings.lockscreen", Context.MODE_PRIVATE);
-                        Toast.makeText(MainActivity.this, "Got Lockscreen Settings from Sequenzia Web", Toast.LENGTH_SHORT).show();
-                        prefsEditor.putBoolean("swSyncWallpaper", false).apply();
+                        typeOfImport=  "Lockscreen";
                         break;
                     default:
                         Toast.makeText(MainActivity.this, "Invalid Setting Type from Sequenzia Web", Toast.LENGTH_SHORT).show();
                         break;
                 }
                 if (settingsPrefs != null) {
-                    if (isMyServiceRunning(AmbientService.class)) {
-                        stopService(new Intent(MainActivity.this, AmbientService.class));
-                    }
-                    SharedPreferences.Editor settings = settingsPrefs.edit();
+                    SharedPreferences finalSettingsPrefs = settingsPrefs;
+                    Log.i("WebLoader", String.format("Got URI: %s", intent.getData()));
 
-                    String _minRes = uri.getQueryParameter("minres");
-                    String _imageRatio = uri.getQueryParameter("ratio");
-                    String _folderName = uri.getQueryParameter("folder");
-                    String _albumId = uri.getQueryParameter("album");
-                    String _searchQuery = uri.getQueryParameter("search");
-                    String _maxAge = uri.getQueryParameter("numdays");
-                    String _pinsOnly = uri.getQueryParameter("pins");
-                    String _nsfwEnabled = uri.getQueryParameter("nsfw");
-                    String _colorSelect = uri.getQueryParameter("brightness");
-                    String _serverName = uri.getQueryParameter("server_hostname");
+                    AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+                    dialog.setMessage(String.format("Import %s from Sequenzia Web? This will replace existing settings!", typeOfImport));
+                    dialog.setTitle("Setup ADS");
+                    dialog.setPositiveButton("Import",
+                            new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    prefsEditor.putBoolean("swSyncWallpaper", (_sType.equals("0"))).apply();
 
-                    Log.i("WebLoader", String.format("Got URI: %s %s", intent.getData(), _nsfwEnabled));
+                                    if (isMyServiceRunning(AmbientService.class)) {
+                                        stopService(new Intent(MainActivity.this, AmbientService.class));
+                                    }
+                                    bEnableTimer.setEnabled(false);
+                                    SharedPreferences.Editor settings = finalSettingsPrefs.edit();
 
-                    if (_serverName != null && _serverName.length() > 0) {
-                        prefsEditor.putString("etServerName", _serverName).apply();
-                    }
-                    if (_folderName != null && _folderName.length() > 0) {
-                        settings.putString("folder", _folderName);
-                    } else {
-                        settings.remove("folder");
-                    }
-                    if (_albumId != null && _albumId.length() > 0) {
-                        settings.putString("album", _albumId);
-                    } else {
-                        settings.remove("album");
-                    }
-                    if (_searchQuery != null && _searchQuery.length() > 0) {
-                        settings.putString("search", _searchQuery);
-                    } else {
-                        settings.remove("search");
-                    }
-                    if (_imageRatio != null && _imageRatio.length() > 0) {
-                        settings.putString("ratio", _imageRatio);
-                    } else {
-                        settings.putString("ratio", "0.9-2.1");
-                    }
-                    if (_minRes != null && _minRes.length() > 0) {
-                        settings.putString("minRes", _minRes);
-                    } else {
-                        settings.remove("minRes");
-                    }
-                    if (_colorSelect != null && _colorSelect.length() > 0) {
-                        settings.putString("bright", _colorSelect);
-                    } else {
-                        settings.remove("bright");
-                    }
-                    if (_pinsOnly != null && _pinsOnly.length() > 0) {
-                        settings.putString("pins", _pinsOnly);
-                    } else {
-                        settings.remove("pins");
-                    }
-                    if (_nsfwEnabled != null && _nsfwEnabled.length() > 0) {
-                        settings.putString("nsfwEnabled", _nsfwEnabled);
-                    } else {
-                        settings.putString("nsfwEnabled", "false");
-                    }
-                    if (_maxAge != null && _maxAge.length() > 0) {
-                        settings.putString("maxAge", _maxAge);
-                    } else {
-                        settings.remove("maxAge");
-                    }
+                                    String _minRes = uri.getQueryParameter("minres");
+                                    String _imageRatio = uri.getQueryParameter("ratio");
+                                    String _folderName = uri.getQueryParameter("folder");
+                                    String _albumId = uri.getQueryParameter("album");
+                                    String _searchQuery = uri.getQueryParameter("search");
+                                    String _maxAge = uri.getQueryParameter("numdays");
+                                    String _pinsOnly = uri.getQueryParameter("pins");
+                                    String _nsfwEnabled = uri.getQueryParameter("nsfw");
+                                    String _colorSelect = uri.getQueryParameter("brightness");
+                                    String _serverName = uri.getQueryParameter("server_hostname");
 
-                    settings.apply();
-                    Toast.makeText(MainActivity.this, "Updated Settings", Toast.LENGTH_SHORT).show();
+                                    if (_serverName != null && _serverName.length() > 0) {
+                                        prefsEditor.putString("etServerName", _serverName).apply();
+                                    }
+                                    if (_folderName != null && _folderName.length() > 0) {
+                                        settings.putString("folder", _folderName);
+                                    } else {
+                                        settings.remove("folder");
+                                    }
+                                    if (_albumId != null && _albumId.length() > 0) {
+                                        settings.putString("album", _albumId);
+                                    } else {
+                                        settings.remove("album");
+                                    }
+                                    if (_searchQuery != null && _searchQuery.length() > 0) {
+                                        settings.putString("search", _searchQuery);
+                                    } else {
+                                        settings.remove("search");
+                                    }
+                                    if (_imageRatio != null && _imageRatio.length() > 0) {
+                                        settings.putString("ratio", _imageRatio);
+                                    } else {
+                                        settings.putString("ratio", "0.9-2.1");
+                                    }
+                                    if (_minRes != null && _minRes.length() > 0) {
+                                        settings.putString("minRes", _minRes);
+                                    } else {
+                                        settings.remove("minRes");
+                                    }
+                                    if (_colorSelect != null && _colorSelect.length() > 0) {
+                                        settings.putString("bright", _colorSelect);
+                                    } else {
+                                        settings.remove("bright");
+                                    }
+                                    if (_pinsOnly != null && _pinsOnly.length() > 0) {
+                                        settings.putString("pins", _pinsOnly);
+                                    } else {
+                                        settings.remove("pins");
+                                    }
+                                    if (_nsfwEnabled != null && _nsfwEnabled.length() > 0) {
+                                        settings.putString("nsfwEnabled", _nsfwEnabled);
+                                    } else {
+                                        settings.putString("nsfwEnabled", "false");
+                                    }
+                                    if (_maxAge != null && _maxAge.length() > 0) {
+                                        settings.putString("maxAge", _maxAge);
+                                    } else {
+                                        settings.remove("maxAge");
+                                    }
 
-                    lastChangeTime[0] = 0;
-                    lastChangeTime[1] = 0;
-                    flipBoardEnabled[0] = true;
-                    flipBoardEnabled[1] = true;
-                    Handler hander = new Handler();
-                    final TimerTask callRefresh = new TimerTask() {
-                        @Override
-                        public void run() {
-                            // post a runnable to the handler
-                            hander.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Log.i("TimerEvent", "Restarting Service!");
-                                    startService(new Intent(MainActivity.this, AmbientService.class));
+                                    settings.apply();
+
+                                    lastChangeTime[0] = 0;
+                                    lastChangeTime[1] = 0;
+                                    flipBoardEnabled[0] = true;
+                                    flipBoardEnabled[1] = true;
+                                    Handler hander = new Handler();
+                                    final TimerTask callRefresh = new TimerTask() {
+                                        @Override
+                                        public void run() {
+                                            // post a runnable to the handler
+                                            hander.post(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    Log.i("TimerEvent", "Restarting Service!");
+                                                    startService(new Intent(MainActivity.this, AmbientService.class));
+                                                    bEnableTimer.setEnabled(true);
+                                                }
+                                            });
+                                        }
+                                    };
+                                    new Timer().schedule(callRefresh, 5000);
                                 }
                             });
+                    dialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
                         }
-                    };
-                    new Timer().schedule(callRefresh, 5000);
-                    //sendBroadcast(new Intent(MainActivity.this, AmbientBroadcastReceiver.class).setAction("REFRESH_IMAGES"));
+                    });
+                    AlertDialog alertDialog = dialog.create();
+                    alertDialog.show();
                 }
             }
         }
@@ -358,7 +393,7 @@ public class MainActivity extends AppCompatActivity {
         flipBoardEnabled[(timerSelection) ? 0 : 1] = !flipBoardEnabled[(timerSelection) ? 0 : 1];
     }
 
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
+    public boolean isMyServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {

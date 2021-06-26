@@ -31,6 +31,7 @@ import java.util.*;
 
 public class AmbientDataManager {
     public static String[] lastNotification = new String[] {null, null};
+    public static Bitmap[] lastNotificationPreview = new Bitmap[] {null, null};
     public static Boolean[] lastNotificationFavRemove = new Boolean[] {false, false};
 
     Context context;
@@ -201,7 +202,7 @@ public class AmbientDataManager {
                         completed.onError(String.format("Failed to get response from server: %s", error));
                     }
                 });
-
+        ambientRefreshRequest.setShouldCache(false);
         NetworkManager.getInstance(context).addToRequestQueue(ambientRefreshRequest);
     }
     public interface AmbientRefreshResponse {
@@ -332,6 +333,7 @@ public class AmbientDataManager {
                 }
                 lastNotificationFavRemove[(imageSelection) ? 0 : 1] = false;
                 lastNotification[(imageSelection) ? 0 : 1] = imageEid;
+                lastNotificationPreview[(imageSelection) ? 0 : 1] = null;
                 updateNotification(imageSelection);
                 ambientHistorySet(imageEid);
             }
@@ -411,7 +413,7 @@ public class AmbientDataManager {
                 return params;
             }
         };
-
+        apiRequest.setShouldCache(false);
         NetworkManager.getInstance(context).addToRequestQueue(apiRequest);
     }
     public void ambientHistorySet (String imageEid) {
@@ -429,7 +431,7 @@ public class AmbientDataManager {
                 // TODO: Setup History Local Storage for Slow Internet Connections
             }
         });
-
+        apiRequest.setShouldCache(false);
         NetworkManager.getInstance(context).addToRequestQueue(apiRequest);
     }
 
@@ -467,7 +469,7 @@ public class AmbientDataManager {
                 },
                 (HashMap<String, String>) requestParams(filename)
         );
-
+        downloadRequest.setShouldCache(false);
         NetworkManager.getInstance(context).addToRequestQueue(downloadRequest);
     }
     private void handleDownloadError(VolleyError error) {
@@ -571,10 +573,21 @@ public class AmbientDataManager {
                 mediaStyle.setShowActionsInCompactView(0,1);
             }
             try {
-                final String fileName = imageObject.get("fileName").getAsString();
-                FileInputStream file = context.openFileInput(fileName);
-                Bitmap bitmap = BitmapFactory.decodeStream(file);
-                notification.setLargeIcon(bitmap);
+                if (lastNotificationPreview[(imageSelection) ? 0 : 1] != null) {
+                    notification.setLargeIcon(lastNotificationPreview[(imageSelection) ? 0 : 1]);
+                } else {
+                    final String fileName = imageObject.get("fileName").getAsString();
+                    FileInputStream file = context.openFileInput(fileName);
+                    Bitmap srcBitmap = BitmapFactory.decodeStream(file);
+                    float aspectRatio = srcBitmap.getWidth() /
+                            (float) srcBitmap.getHeight();
+                    int width = 512;
+                    int height = Math.round(width / aspectRatio);
+                    srcBitmap = Bitmap.createScaledBitmap(srcBitmap, width, height, false);
+                    lastNotificationPreview[(imageSelection) ? 0 : 1] = srcBitmap;
+                    notification.setLargeIcon(srcBitmap);
+                }
+
                 if (imageObject.has("fileColor")) {
                     final int color = imageObject.get("fileColor").getAsInt();
                     notification.setColor(color);

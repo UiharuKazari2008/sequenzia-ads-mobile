@@ -14,10 +14,10 @@ import java.net.CookiePolicy;
 public class NetworkManager {
     private static NetworkManager instance;
     private RequestQueue requestQueue;
-    private static Context ctx;
+    private static Context context;
 
     private NetworkManager(Context context) {
-        ctx = context;
+        NetworkManager.context = context;
         requestQueue = getRequestQueue();
     }
 
@@ -30,9 +30,9 @@ public class NetworkManager {
 
     public RequestQueue getRequestQueue() {
         if (requestQueue == null) {
-            CookieManager cookieManager = new CookieManager(new PersistentCookieStore(ctx.getApplicationContext()), CookiePolicy.ACCEPT_ORIGINAL_SERVER);
+            CookieManager cookieManager = new CookieManager(new PersistentCookieStore(context), CookiePolicy.ACCEPT_ORIGINAL_SERVER);
             CookieHandler.setDefault(cookieManager);
-            requestQueue = Volley.newRequestQueue(ctx.getApplicationContext());
+            requestQueue = Volley.newRequestQueue(context);
         }
         return requestQueue;
     }

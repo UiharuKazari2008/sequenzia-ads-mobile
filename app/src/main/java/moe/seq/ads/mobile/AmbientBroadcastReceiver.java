@@ -87,6 +87,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                                 public void run() {
                                     Log.i("TimerEvent", "Getting Next Image!");
                                     ambientDataManager.nextImage(true, true);
+                                    MainActivity.pendingTimeReset[0] = true;
                                     refreshTimer1 = null;
                                 }
                             });
@@ -129,6 +130,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                                     public void run() {
                                         Log.i("TimerEvent", "Getting Next Image!");
                                         ambientDataManager.nextImage(true, true);
+                                        MainActivity.pendingTimeReset[0] = true;
                                         refreshTimer1 = null;
                                     }
                                 });
@@ -171,6 +173,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                                     public void run() {
                                         Log.i("TimerEvent", "Getting Next Image!");
                                         ambientDataManager.nextImage(true, false);
+                                        MainActivity.pendingTimeReset[1] = true;
                                         refreshTimer2 = null;
                                     }
                                 });
@@ -233,6 +236,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                 case "OPEN_IMAGE":
                     if (index != -1) {
                         SharedPreferences sharedPref = context.getSharedPreferences(String.format("seq.ambientData.%s", (imageSelection == 0) ? "wallpaper" : "lockscreen"), Context.MODE_PRIVATE);
+                        SharedPreferences screenPref = context.getSharedPreferences(String.format("seq.settings.%s", (imageSelection == 0) ? "wallpaper" : "lockscreen"), Context.MODE_PRIVATE);
                         final String responseData = sharedPref.getString(String.format("ambientResponse-%s", index), null);
                         if (responseData != null) {
                             JsonObject imageObject = null;
@@ -244,7 +248,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                             try {
                                 assert imageObject != null;
                                 String messageId = imageObject.get("fileEid").getAsString();
-                                Uri fileURL = Uri.parse(String.format("https://%s/gallery?search=eid:%s", prefs.getString("etServerName", "seq.moe"), messageId));
+                                Uri fileURL = Uri.parse(String.format("https://%s/gallery?nsfw=%s&search=eid:%s", prefs.getString("etServerName", "seq.moe"), screenPref.getString("nsfwEnabled", "false"), messageId));
                                 context.startActivity(new Intent(Intent.ACTION_VIEW, fileURL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                             } catch (Exception e) {
                                 Toast.makeText(context, String.format("Failed to open: %s", e), Toast.LENGTH_SHORT).show();

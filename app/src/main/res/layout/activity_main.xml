@@ -49,9 +49,9 @@
             android:textSize="16sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/startRefreshTimer"
-            android:layout_marginTop="8dp" app:layout_constraintEnd_toEndOf="parent" android:layout_marginStart="24dp"
-            android:layout_marginEnd="24dp"/>
+            app:layout_constraintEnd_toEndOf="parent" android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp" app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintTop_toBottomOf="@+id/textView" android:layout_marginTop="16dp"/>
     <Button
             android:id="@+id/logoutButton"
             android:layout_width="98dp"
@@ -61,27 +61,36 @@
             app:layout_constraintTop_toTopOf="@+id/loginButton" app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginEnd="24dp"/>
     <Button
-            android:text="Start Service"
+            android:text="Start"
             android:layout_width="0dp"
             android:layout_height="wrap_content" android:id="@+id/startRefreshTimer"
             app:layout_constraintTop_toBottomOf="@+id/loginButton" app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginStart="24dp" android:layout_marginTop="8dp"
-            android:enabled="false" app:layout_constraintEnd_toStartOf="@+id/downloadImages" android:layout_marginEnd="8dp"/>
-    <Button
-            android:text="Settings"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:id="@+id/settingsButton"
-            app:layout_constraintTop_toBottomOf="@+id/loginButton"
-            app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="24dp" android:layout_marginTop="8dp"
-            app:layout_constraintStart_toEndOf="@+id/downloadImages"/>
-    <Button
-            android:text="Download"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:id="@+id/downloadImages"
-            android:enabled="false"
-            app:layout_constraintStart_toEndOf="@+id/startRefreshTimer"
-            app:layout_constraintEnd_toStartOf="@+id/settingsButton"
-            app:layout_constraintTop_toBottomOf="@+id/loginButton" android:layout_marginTop="8dp"
-            android:layout_marginEnd="8dp"/>
+            android:layout_marginTop="8dp"
+            android:enabled="false" app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="24dp"
+            android:layout_marginStart="24dp"/>
+    <TextView
+            android:text="@string/setup_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content" android:id="@+id/textView"
+            app:layout_constraintTop_toBottomOf="@+id/startRefreshTimer"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp" android:layout_marginTop="16dp"/>
+    <ImageView
+            android:layout_width="48dp"
+            app:srcCompat="@drawable/a_e24714aec391df850dfa611cace5e573"
+            android:id="@+id/imageView"
+            app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="16dp"
+            app:layout_constraintBottom_toBottomOf="parent" android:layout_marginBottom="16dp"
+            android:layout_height="48dp"/>
+    <TextView
+            android:text="Dedicated to my friend Emmy"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content" android:id="@+id/textView2"
+            app:layout_constraintStart_toEndOf="@+id/imageView"
+            app:layout_constraintBottom_toBottomOf="@+id/imageView"
+            android:layout_marginStart="16dp" android:textSize="18sp"
+            app:layout_constraintTop_toTopOf="@+id/imageView" android:textColor="#FF548E"
+            app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="16dp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

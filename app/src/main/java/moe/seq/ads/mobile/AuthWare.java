@@ -36,6 +36,8 @@ public class AuthWare {
         } else {
             // Get stored login token
             SharedPreferences sharedPref = context.getSharedPreferences("seq.authWare", Context.MODE_PRIVATE);
+            SharedPreferences cookiePref = context.getSharedPreferences("seq.cookies", Context.MODE_PRIVATE);
+            String sessionId = cookiePref.getString("SessionId", "");
             String storedLoginToken = sharedPref.getString("StaticLogin", null);
             String tokenLogin = "";
             if (useLoginToken && storedLoginToken != null) {
@@ -55,51 +57,78 @@ public class AuthWare {
                                     // Login was successful!
                                     Toast.makeText(context, "Login Successful!", Toast.LENGTH_SHORT).show();
                                     // Refresh Session to required data
-                                    refreshSession(new AuthWareRefreshAccount() {
-                                        @Override
-                                        public void onError(String message) { isValid.onResponse(false, null, null); }
+                                    Log.i("Session", String.format("Cache: %s", sessionId));
+                                    Log.i("Session", String.format("Reponse: %s", response.getString("session")));
+                                    String responseString = "";
+                                    try {
+                                        responseString = response.getString("session");
+                                    } catch (Exception e) {
+                                        Toast.makeText(context, "Failed to get a session token", Toast.LENGTH_SHORT).show();
+                                    }
+                                    if (!responseString.equals(sessionId)) {
+                                        refreshSession(new AuthWareRefreshAccount() {
+                                            @Override
+                                            public void onError(String message) {
+                                                isValid.onResponse(false, null, null);
+                                            }
 
-                                        @Override
-                                        public void onResponse(Boolean ok) {
-                                            // Async Get Static Login Token
-                                            getStaticLogin(new AuthWareResponseStaticKey() {
-                                                @Override
-                                                public void onError(String message) {
-                                                    Toast.makeText(context, "Failed to get static login key", Toast.LENGTH_SHORT).show();
-                                                }
-
-                                                @Override
-                                                public void onResponse(Boolean validToken) {
-                                                    if (!validToken) {
-                                                        // Request user to generate a login token if it does not exist already.
-                                                        AlertDialog.Builder dialog=new AlertDialog.Builder(context);
-                                                        dialog.setMessage("Account does not have static login token! Would you like to setup a new token?");
-                                                        dialog.setTitle("AuthWare");
-                                                        dialog.setPositiveButton("YES",
-                                                                new DialogInterface.OnClickListener() {
-                                                                    public void onClick(DialogInterface dialog, int which) {
-                                                                        newStaticLogin(new AuthWareResponseStaticKey() {
-                                                                            @Override
-                                                                            public void onError(String message) { Toast.makeText(context, String.format("Failed to get a login token - %s", message), Toast.LENGTH_SHORT).show(); }
-
-                                                                            @Override
-                                                                            public void onResponse(Boolean validTokenResponse) { Toast.makeText(context, "Login Token Generated!", Toast.LENGTH_SHORT).show(); }
-                                                                        });
-                                                                    }
-                                                                });
-                                                        dialog.setNegativeButton("Cancel",new DialogInterface.OnClickListener() {
-                                                            @Override
-                                                            public void onClick(DialogInterface dialog, int which) { Toast.makeText(context, "You will have to login again when session expires", Toast.LENGTH_SHORT).show(); }
-                                                        });
-                                                        AlertDialog alertDialog=dialog.create();
-                                                        alertDialog.show();
+                                            @Override
+                                            public void onResponse(Boolean ok) {
+                                                // Async Get Static Login Token
+                                                getStaticLogin(new AuthWareResponseStaticKey() {
+                                                    @Override
+                                                    public void onError(String message) {
+                                                        Toast.makeText(context, "Failed to get static login key", Toast.LENGTH_SHORT).show();
                                                     }
+
+                                                    @Override
+                                                    public void onResponse(Boolean validToken) {
+                                                        if (!validToken) {
+                                                            // Request user to generate a login token if it does not exist already.
+                                                            AlertDialog.Builder dialog = new AlertDialog.Builder(context);
+                                                            dialog.setMessage("Account does not have static login token! Would you like to setup a new token?");
+                                                            dialog.setTitle("AuthWare");
+                                                            dialog.setPositiveButton("YES",
+                                                                    new DialogInterface.OnClickListener() {
+                                                                        public void onClick(DialogInterface dialog, int which) {
+                                                                            newStaticLogin(new AuthWareResponseStaticKey() {
+                                                                                @Override
+                                                                                public void onError(String message) {
+                                                                                    Toast.makeText(context, String.format("Failed to get a login token - %s", message), Toast.LENGTH_SHORT).show();
+                                                                                }
+
+                                                                                @Override
+                                                                                public void onResponse(Boolean validTokenResponse) {
+                                                                                    Toast.makeText(context, "Login Token Generated!", Toast.LENGTH_SHORT).show();
+                                                                                }
+                                                                            });
+                                                                        }
+                                                                    });
+                                                            dialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                                                                @Override
+                                                                public void onClick(DialogInterface dialog, int which) {
+                                                                    Toast.makeText(context, "You will have to login again when session expires", Toast.LENGTH_SHORT).show();
+                                                                }
+                                                            });
+                                                            AlertDialog alertDialog = dialog.create();
+                                                            alertDialog.show();
+                                                        }
+                                                    }
+                                                });
+                                                authComplete = true;
+                                                isValid.onResponse(true, null, null);
+                                                try {
+                                                    cookiePref.edit().putString("SessionId", response.getString("session")).apply();
+                                                    Toast.makeText(context, "Persistent Session Saved", Toast.LENGTH_SHORT).show();
+                                                } catch (Exception e) {
+                                                    Toast.makeText(context, "Failed to save session token", Toast.LENGTH_SHORT).show();
                                                 }
-                                            });
-                                            authComplete = true;
-                                            isValid.onResponse(true, null, null);
-                                        }
-                                    });
+                                            }
+                                        });
+                                    } else {
+                                        authComplete = true;
+                                        isValid.onResponse(true, null, null);
+                                    }
                                 } else {
                                     // Login required, get code if possible.
                                     Toast.makeText(context, "Login Required!", Toast.LENGTH_SHORT).show();
@@ -113,7 +142,7 @@ public class AuthWare {
                                     try {
                                         if (response.has("session")) { sessionID = response.getString("session"); }
                                     } catch (Exception e) {
-                                        Toast.makeText(context, "Oh No, Did not get a Session ID from the server! Login unavalible at this time", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(context, "Oh No, Did not get a Session ID from the server! Login unavailable at this time", Toast.LENGTH_SHORT).show();
                                     }
                                     isValid.onResponse(false, authCode, sessionID);
                                 }
@@ -130,7 +159,7 @@ public class AuthWare {
                             isValid.onError("CONNECTION_ERROR");
                         }
                     });
-
+            loginCheckRequest.setShouldCache(false);
             NetworkManager.getInstance(context).addToRequestQueue(loginCheckRequest);
         }
     }
@@ -164,6 +193,7 @@ public class AuthWare {
             }
         });
 
+        destroyRequest.setShouldCache(false);
         NetworkManager.getInstance(context).addToRequestQueue(destroyRequest);
     }
 
@@ -197,6 +227,8 @@ public class AuthWare {
                 staticKey.onError(String.valueOf(error));
             }
         });
+
+        tokenRequest.setShouldCache(false);
         NetworkManager.getInstance(context).addToRequestQueue(tokenRequest);
     }
     public void newStaticLogin (AuthWareResponseStaticKey staticKey) {
@@ -220,6 +252,7 @@ public class AuthWare {
                 staticKey.onError(String.valueOf(error));
             }
         });
+        tokenRequest.setShouldCache(false);
         NetworkManager.getInstance(context).addToRequestQueue(tokenRequest);
     }
 
@@ -245,6 +278,7 @@ public class AuthWare {
                 cb.onError(String.valueOf(error));
             }
         });
+        tokenRequest.setShouldCache(false);
         NetworkManager.getInstance(context).addToRequestQueue(tokenRequest);
 
     }

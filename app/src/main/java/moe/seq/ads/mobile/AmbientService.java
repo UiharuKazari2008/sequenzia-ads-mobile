@@ -46,7 +46,7 @@ public class AmbientService extends Service {
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Toast.makeText(this, "ADS Service Stared", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "ADS Service Started", Toast.LENGTH_LONG).show();
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         startForeground(200, buildNotification(MainActivity.NOTIFICATION_CHANNEL_ID_2));
         startForeground(100, buildNotification(MainActivity.NOTIFICATION_CHANNEL_ID_1));
@@ -61,7 +61,7 @@ public class AmbientService extends Service {
         screenStateFilter.addAction(Intent.ACTION_SCREEN_OFF);
         screenStateFilter.setPriority(100);
         registerReceiver(ambientBroadcastReceiver, screenStateFilter);
-        sendBroadcast(new Intent(this.context, AmbientBroadcastReceiver.class).setAction("REFRESH_IMAGES"));
+        sendBroadcast(new Intent(this.context, AmbientBroadcastReceiver.class).setAction("NEXT_IMAGE"));
         return START_STICKY;
     }
 
@@ -118,7 +118,7 @@ public class AmbientService extends Service {
         Notification.Builder notification = new Notification.Builder(this, channel)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setSubText("Initializing")
-                .setContentTitle("Downloading Images...");
+                .setContentTitle("Loading Images...");
         return notification.build();
     }
 }

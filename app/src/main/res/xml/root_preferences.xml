@@ -1,11 +1,12 @@
 <PreferenceScreen
-        xmlns:tools="http://schemas.android.com/tools" xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+        xmlns:tools="http://schemas.android.com/tools" xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="Service" >
+    <PreferenceCategory android:title="Service">
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Enable Service at Boot" android:key="swOnBoot"
-                android:enabled="false"
+                android:enabled="true"
                 android:summary="Start ADS when phone is restarted"/>
         <SwitchPreference
                 android:defaultValue="true"
@@ -14,14 +15,6 @@
     </PreferenceCategory>
     <PreferenceCategory
             android:title="Homescreen">
-        <SwitchPreference
-                android:defaultValue="true"
-                android:title="Sync Wallpapers" android:key="swSyncWallpaper"
-                android:summary="Set Homescreen and Lockscreen to the same image"/>
-        <SwitchPreference
-                android:defaultValue="false"
-                android:title="Alternate Wallpapers" android:key="swAlternateWallpaper"
-                android:summary="When Sync Wallpapers is enabled\nAlternate between homescreen and lockscreen wallpapers"/>
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Change Homescreen" android:key="swEnableWallpaper"
@@ -33,10 +26,18 @@
                 android:key="ltCycleTime1"
                 android:defaultValue="60"
                 android:summary="Time between homescreen changes"
-                android:title="Wallpaper Lifetime" />
+                android:title="Wallpaper Lifetime"/>
+        <SwitchPreference
+                android:defaultValue="true"
+                android:title="Sync Wallpapers" android:key="swSyncWallpaper"
+                android:summary="Set Homescreen and Lockscreen to the same image"/>
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Alternate Wallpapers" android:key="swAlternateWallpaper"
+                android:summary="When Sync Wallpapers is enabled\nAlternate between homescreen and lockscreen wallpapers"/>
     </PreferenceCategory>
     <PreferenceCategory
-        android:title="Lockscreen">
+            android:title="Lockscreen">
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Change Lockscreen" android:key="swEnableLockscreen"
@@ -48,7 +49,7 @@
                 android:key="ltCycleTime2"
                 android:defaultValue="60"
                 android:summary="Time between lockscreen changes"
-                android:title="Wallpaper Lifetime" />
+                android:title="Wallpaper Lifetime"/>
     </PreferenceCategory>
     <PreferenceCategory
             android:title="Request Options">
@@ -71,7 +72,7 @@
                 android:key="ltImageCount"
                 android:summary="Download these many images for offline access"
                 android:defaultValue="5"
-                android:title="Number of Images" />
+                android:title="Number of Images"/>
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Force Center Alignment" android:key="swCenter"
