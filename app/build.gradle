@@ -3,15 +3,15 @@ plugins {
 }
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion 30
     buildToolsVersion "30.0.3"
 
     defaultConfig {
         applicationId "moe.seq.ads.mobile"
-        minSdkVersion 21
-        targetSdkVersion 29
+        minSdkVersion 26
+        targetSdkVersion 30
         versionCode 1
-        versionName "1.0"
+        versionName "1.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -41,7 +41,7 @@ dependencies {
     implementation 'androidx.navigation:navigation-ui:2.3.0'
     implementation 'androidx.preference:preference:1.1.1'
     implementation 'org.jetbrains:annotations:20.1.0'
-    compile group: 'com.google.code.gson', name: 'gson', version: '2.8.5'
+    implementation group: 'com.google.code.gson', name: 'gson', version: '2.8.5'
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'

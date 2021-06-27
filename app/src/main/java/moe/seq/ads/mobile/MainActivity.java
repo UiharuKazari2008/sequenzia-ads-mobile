@@ -161,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(DialogInterface dialog, int which) {
                                     prefsEditor.putBoolean("swSyncWallpaper", (_sType.equals("0"))).apply();
 
-                                    if (isMyServiceRunning(AmbientService.class)) {
+                                    if (isMyServiceRunning(AmbientService.class, MainActivity.this)) {
                                         stopService(new Intent(MainActivity.this, AmbientService.class));
                                     }
                                     bEnableTimer.setEnabled(false);
@@ -242,13 +242,13 @@ public class MainActivity extends AppCompatActivity {
                                                 @Override
                                                 public void run() {
                                                     Log.i("TimerEvent", "Restarting Service!");
-                                                    startService(new Intent(MainActivity.this, AmbientService.class));
+                                                    sendBroadcast(new Intent(MainActivity.this, AmbientBroadcastReceiver.class).setAction("REFRESH_IMAGES"));
                                                     bEnableTimer.setEnabled(true);
                                                 }
                                             });
                                         }
                                     };
-                                    new Timer().schedule(callRefresh, 5000);
+                                    new Timer().schedule(callRefresh, 1000);
                                 }
                             });
                     dialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -296,7 +296,7 @@ public class MainActivity extends AppCompatActivity {
                                     dialog.setNeutralButton("via Browser",
                                             new DialogInterface.OnClickListener() {
                                                 public void onClick(DialogInterface dialog, int which) {
-                                                    Uri fileURL = Uri.parse(String.format("https://%s//transfer?type=0&deviceID=%s", prefs.getString("etServerName", "seq.moe"), sessionId));
+                                                    Uri fileURL = Uri.parse(String.format("https://%s/transfer?type=0&deviceID=%s", prefs.getString("etServerName", "seq.moe"), sessionId));
                                                     MainActivity.this.startActivity(new Intent(Intent.ACTION_VIEW, fileURL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                                                 }
                                             });
@@ -346,7 +346,7 @@ public class MainActivity extends AppCompatActivity {
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onClick(View v) {
-                if (isMyServiceRunning(AmbientService.class)) {
+                if (isMyServiceRunning(AmbientService.class, MainActivity.this)) {
                     stopService(new Intent(MainActivity.this, AmbientService.class));
                     if (flipBoardEnabled[0] || flipBoardEnabled[1]) {
                         lastChangeTime[0] = 0;
@@ -367,15 +367,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 sendBroadcast(new Intent(MainActivity.this, AmbientBroadcastReceiver.class).setAction("REFRESH_IMAGES"));
-                if (!isMyServiceRunning(AmbientService.class)) {
-                    startService(new Intent(MainActivity.this, AmbientService.class));
-                }
-                if (!flipBoardEnabled[0] || !flipBoardEnabled[1]) {
-                    lastChangeTime[0] = 0;
-                    lastChangeTime[1] = 0;
-                    flipBoardEnabled[0] = true;
-                    flipBoardEnabled[1] = true;
-                }
                 bEnableTimer.setText("Disable");
             }
         });
@@ -393,8 +384,8 @@ public class MainActivity extends AppCompatActivity {
         flipBoardEnabled[(timerSelection) ? 0 : 1] = !flipBoardEnabled[(timerSelection) ? 0 : 1];
     }
 
-    public boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+    public static boolean isMyServiceRunning(Class<?> serviceClass, Context context) {
+        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
                 return true;
@@ -419,7 +410,7 @@ public class MainActivity extends AppCompatActivity {
                         bLoginButton.setEnabled(true);
                     } else {
                         bLoginButton.setEnabled(false);
-                        if (!isMyServiceRunning(AmbientService.class)) {
+                        if (!isMyServiceRunning(AmbientService.class, MainActivity.this)) {
                             bEnableTimer.setText("Stop");
                             startForegroundService(new Intent(MainActivity.this, AmbientService.class));
                         }

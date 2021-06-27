@@ -225,7 +225,17 @@ public class AmbientDataManager {
                 @Override
                 public void onResponse(Boolean ok) {
                     completed.onResponse(true);
-                    nextImage(false, true);
+                    if (!MainActivity.isMyServiceRunning(AmbientService.class, context)) {
+                        context.startService(new Intent(context, AmbientService.class));
+                    } else {
+                        nextImage(false, true);
+                    }
+                    if (!MainActivity.flipBoardEnabled[0] || !MainActivity.flipBoardEnabled[1]) {
+                        MainActivity.lastChangeTime[0] = 0;
+                        MainActivity.lastChangeTime[1] = 0;
+                        MainActivity.flipBoardEnabled[0] = true;
+                        MainActivity.flipBoardEnabled[1] = true;
+                    }
                 }
             });
         } else if (enableWallpaper && enableLockscreen) {
@@ -238,7 +248,9 @@ public class AmbientDataManager {
                 @RequiresApi(api = Build.VERSION_CODES.N)
                 @Override
                 public void onResponse(Boolean ok) {
-                    nextImage(false, true);
+                    if (MainActivity.isMyServiceRunning(AmbientService.class, context)) {
+                        nextImage(false, true);
+                    }
 
                     ambientRefresh(false, new AmbientDataManager.AmbientRefreshRequest() {
                         @Override
@@ -251,6 +263,17 @@ public class AmbientDataManager {
                         public void onResponse(Boolean ok) {
                             completed.onResponse(true);
                             nextImage(false, false);
+                            if (!MainActivity.isMyServiceRunning(AmbientService.class, context)) {
+                                context.startService(new Intent(context, AmbientService.class));
+                            } else {
+                                nextImage(false, true);
+                            }
+                            if (!MainActivity.flipBoardEnabled[0] || !MainActivity.flipBoardEnabled[1]) {
+                                MainActivity.lastChangeTime[0] = 0;
+                                MainActivity.lastChangeTime[1] = 0;
+                                MainActivity.flipBoardEnabled[0] = true;
+                                MainActivity.flipBoardEnabled[1] = true;
+                            }
                         }
                     });
                 }
@@ -266,7 +289,17 @@ public class AmbientDataManager {
                 @Override
                 public void onResponse(Boolean ok) {
                     completed.onResponse(true);
-                    nextImage(false, enableWallpaper);
+                    if (!MainActivity.isMyServiceRunning(AmbientService.class, context)) {
+                        context.startService(new Intent(context, AmbientService.class));
+                    } else {
+                        nextImage(false, enableWallpaper);
+                    }
+                    if (!MainActivity.flipBoardEnabled[0] || !MainActivity.flipBoardEnabled[1]) {
+                        MainActivity.lastChangeTime[0] = 0;
+                        MainActivity.lastChangeTime[1] = 0;
+                        MainActivity.flipBoardEnabled[0] = true;
+                        MainActivity.flipBoardEnabled[1] = true;
+                    }
                 }
             });
         }
