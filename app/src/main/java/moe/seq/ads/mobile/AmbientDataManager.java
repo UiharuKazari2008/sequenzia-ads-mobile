@@ -368,7 +368,7 @@ public class AmbientDataManager {
                 lastNotification[(imageSelection) ? 0 : 1] = imageEid;
                 lastNotificationPreview[(imageSelection) ? 0 : 1] = null;
                 updateNotification(imageSelection);
-                ambientHistorySet(imageEid);
+                ambientHistorySet(imageEid, (imageSelection) ? 0 : 1);
             }
         });
     }
@@ -449,9 +449,9 @@ public class AmbientDataManager {
         apiRequest.setShouldCache(false);
         NetworkManager.getInstance(context).addToRequestQueue(apiRequest);
     }
-    public void ambientHistorySet (String imageEid) {
+    public void ambientHistorySet (String imageEid, Integer index) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        final String url = String.format("https://%s/ambient-history?command=set&displayname=ADSMobile-%s&imageid=%s", prefs.getString("etServerName", "seq.moe"), prefs.getString("etDisplayName", "Untitled"), imageEid);
+        final String url = String.format("https://%s/ambient-history?command=set&displayname=ADSMobile-%s&screen=%s&imageid=%s", prefs.getString("etServerName", "seq.moe"), prefs.getString("etDisplayName", "Untitled"), index, imageEid);
 
         StringRequest apiRequest = new StringRequest(Request.Method.GET, url, new com.android.volley.Response.Listener<String>() {
             @Override
@@ -624,7 +624,7 @@ public class AmbientDataManager {
                 if (imageObject.has("fileColor")) {
                     final int color = imageObject.get("fileColor").getAsInt();
                     notification.setColor(color);
-                    notification.setColorized(true);
+                    //notification.setColorized(true);
                 }
             } catch (Exception e) {
                 Log.e("NotifiManager", String.format("Failed to load bitmap for notification: %s", e));
