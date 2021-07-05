@@ -33,6 +33,7 @@ public class AmbientDataManager {
     public static String[] lastNotification = new String[] {null, null};
     public static Bitmap[] lastNotificationPreview = new Bitmap[] {null, null};
     public static Boolean[] lastNotificationFavRemove = new Boolean[] {false, false};
+    public static Boolean lastTimeSelect = false;
 
     Context context;
 
@@ -44,32 +45,36 @@ public class AmbientDataManager {
         void onError(String message);
         void onResponse(Boolean completed);
     }
-    public void ambientRefresh (Boolean wallpaperSelection, AmbientRefreshRequest completed) {
+    public void ambientRefresh (Boolean wallpaperSelection, Boolean timeSelection, AmbientRefreshRequest completed) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        SharedPreferences settingsPrefs = null;
+        SharedPreferences settingsPrefs;
 
         String filePrefix = "wallpaper";
         if (wallpaperSelection) {
-            settingsPrefs = context.getSharedPreferences("seq.settings.wallpaper", Context.MODE_PRIVATE);
+            settingsPrefs = context.getSharedPreferences(String.format("seq.settings.wallpaper%s", (timeSelection) ? ".night" : ""), Context.MODE_PRIVATE);
         } else {
-            settingsPrefs = context.getSharedPreferences("seq.settings.lockscreen", Context.MODE_PRIVATE);
+            settingsPrefs = context.getSharedPreferences(String.format("seq.settings.lockscreen%s", (timeSelection) ? ".night" : ""), Context.MODE_PRIVATE);
             filePrefix = "lockscreen";
         }
-        SharedPreferences sharedPref = context.getSharedPreferences(String.format("seq.ambientData.%s", filePrefix), Context.MODE_PRIVATE);
+        SharedPreferences sharedPref = context.getSharedPreferences(String.format("seq.ambientData.%s%s", filePrefix, (timeSelection) ? ".night" : ""), Context.MODE_PRIVATE);
         SharedPreferences.Editor prefsEditor = sharedPref.edit();
         Map<String, ?> allOldKeys = sharedPref.getAll();
 
-        String minResolution = settingsPrefs.getString("minRes", "");
+        String minResolution = "";
         String folderName = settingsPrefs.getString("folder", "");
         String albumName = settingsPrefs.getString("album", "");
         String searchQuery = settingsPrefs.getString("search", "");
         String aspectRatio = settingsPrefs.getString("ratio", "");
         String pinsOnly = settingsPrefs.getString("pins", "");
-        String nsfwResults = String.format("nsfw=%s&", settingsPrefs.getString("nsfwEnabled", "false"));
         String maxAge = settingsPrefs.getString("maxAge", "");
-        String imagesToKeep = String.format("num=%s&", prefs.getString("ltImageCount", "5"));
-        String colorSelection = settingsPrefs.getString("bright", "");
-        String displayName = String.format("displayname=ADSMobile-%s", settingsPrefs.getString("etDisplayName", "Untitled"));
+        String darkSelection = settingsPrefs.getString("bright", "");
+        String colorSelection = settingsPrefs.getString("color", "");
+        final String displayName = "displayname=ADSMobile-Untitled";
+        final String imagesToKeep = String.format("num=%s&", prefs.getString("ltImageCount", "5"));
+        final String minFResolution = settingsPrefs.getString("minRes", "");
+        final String minHResolution = settingsPrefs.getString("minHRes", "");
+        final String minWResolution = settingsPrefs.getString("minWRes", "");
+        final String nsfwResults = String.format("nsfw=%s&", settingsPrefs.getString("nsfwEnabled", "false"));
 
         if (albumName.length() > 0 ) { albumName = String.format("album=%s&", albumName); }
         if (folderName.length() > 2 && folderName.contains(":")) { folderName = String.format("folder=%s&", folderName); }
@@ -77,17 +82,27 @@ public class AmbientDataManager {
         if (aspectRatio.length() > 2) { aspectRatio = String.format("ratio=%s&", aspectRatio); }
         if (maxAge.length() > 0) { maxAge = String.format("numdays=%s&", maxAge); }
         if (pinsOnly.length() > 0) { pinsOnly = String.format("pins=%s&", pinsOnly); }
-        if (minResolution.length() > 0) { minResolution = String.format("minres=%s&", minResolution); }
-        if (colorSelection.equals("1")) {
-            colorSelection = "dark=false&";
-        } else if (colorSelection.equals("2")) {
-            colorSelection = "dark=true&";
+        if (minFResolution.length() > 0) {
+            minResolution = String.format("minres=%s&", minFResolution);
         } else {
-            colorSelection = "";
+            if (minHResolution.length() > 0) {
+                minResolution += String.format("minhres=%s&", minHResolution);
+            }
+            if (minWResolution.length() > 0) {
+                minResolution += String.format("minwres=%s&", minWResolution);
+            }
+        }
+        if (colorSelection.length() > 0) { colorSelection = String.format("color=%s&", colorSelection); }
+        if (darkSelection.equals("1")) {
+            darkSelection = "dark=false&";
+        } else if (darkSelection.equals("2")) {
+            darkSelection = "dark=true&";
+        } else {
+            darkSelection = "";
         }
 
 
-        final String url = String.format("https://%s/ambient-refresh?nocds=true&%s%s%s%s%s%s%s%s%s%s%s", prefs.getString("etServerName", "seq.moe"), imagesToKeep, colorSelection, minResolution, folderName, albumName, searchQuery, aspectRatio, pinsOnly, nsfwResults, maxAge, displayName);
+        final String url = String.format("https://%s/ambient-refresh?nocds=true&%s%s%s%s%s%s%s%s%s%s%s%s", prefs.getString("etServerName", "seq.moe"), imagesToKeep, darkSelection, colorSelection, minResolution, folderName, albumName, searchQuery, aspectRatio, pinsOnly, nsfwResults, maxAge, displayName);
 
         Log.i("ADM/Dispatch", url);
 
@@ -116,8 +131,8 @@ public class AmbientDataManager {
                                     final String fullImageURL = singleImage.getString("fullImage");
                                     final String previewImageURL = singleImage.getString("previewImage");
                                     final int imageEid = singleImage.getInt("eid");
-                                    final String fileName = String.format("adi-%s-%s", finalFilePrefix, imageEid);
-                                    final String previewName = String.format("adp-%s-%s", finalFilePrefix, imageEid);
+                                    final String fileName = String.format("adi-%s-%s%s", finalFilePrefix, (timeSelection) ? "night-" : "", imageEid);
+                                    final String previewName = String.format("adp-%s-%s%s", finalFilePrefix, (timeSelection) ? "night-" : "", imageEid);
                                     if (singleImage.getString("colorR") != null) {
                                         final int imageColor = android.graphics.Color.rgb(
                                                 Integer.parseInt(singleImage.getString("colorR")),
@@ -153,7 +168,12 @@ public class AmbientDataManager {
                                         // Request Images to be downloaded
                                         File[] oldImages = context.getFilesDir().listFiles((new FileFilter(){
                                             public boolean accept(File file) {
-                                                return file.getName().contains(String.format("adi-%s-", finalFilePrefix)) && !imagesDownloaded.contains(file.getName());
+                                                if (timeSelection) {
+                                                    return file.getName().contains(String.format("adi-%s-night-", finalFilePrefix)) && !imagesDownloaded.contains(file.getName());
+                                                } else {
+                                                    return file.getName().contains(String.format("adi-%s-", finalFilePrefix)) && !imagesDownloaded.contains(file.getName()) && !file.getName().contains("-night-");
+                                                }
+
                                             }
                                         }));
                                         if (oldImages != null && oldImages.length > 0) {
@@ -182,6 +202,7 @@ public class AmbientDataManager {
                                             public void onResponse(Boolean ok) {
                                                 completed.onResponse(true);
                                                 MainActivity.pendingRefresh[(wallpaperSelection) ? 0 : 1] = false;
+                                                Toast.makeText(context, String.format("Refresh for %s%s Complete!", finalFilePrefix, (timeSelection) ? ".night" : ""), Toast.LENGTH_SHORT).show();
                                             }
                                         });
                                     }
@@ -209,13 +230,13 @@ public class AmbientDataManager {
         void onError(String message);
         void onResponse(Boolean completed);
     }
-    public void ambientRefreshRequest (AmbientRefreshResponse completed) {
+    public void ambientRefreshRequest (boolean timeSelect, boolean changeImage, AmbientRefreshResponse completed) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean syncWallpapers = prefs.getBoolean("swSyncWallpaper", true);
         boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
         boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
         if (syncWallpapers && (enableLockscreen || enableWallpaper)) {
-            ambientRefresh(true, new AmbientDataManager.AmbientRefreshRequest() {
+            ambientRefresh(true, timeSelect, new AmbientDataManager.AmbientRefreshRequest() {
                 @Override
                 public void onError(String message) {
                     completed.onError(message);
@@ -224,11 +245,23 @@ public class AmbientDataManager {
                 @RequiresApi(api = Build.VERSION_CODES.N)
                 @Override
                 public void onResponse(Boolean ok) {
-                    completed.onResponse(true);
                     if (!MainActivity.isMyServiceRunning(AmbientService.class, context)) {
                         context.startService(new Intent(context, AmbientService.class));
                     } else {
-                        nextImage(false, true);
+                        if (changeImage) {
+                            nextImage(false, timeSelect, true, new NextImageResponse() {
+                                @Override
+                                public void onError(String message) {
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                                    completed.onResponse(false);
+                                }
+
+                                @Override
+                                public void onResponse(Boolean ok) {
+                                    completed.onResponse(true);
+                                }
+                            });
+                        }
                     }
                     if (!MainActivity.flipBoardEnabled[0] || !MainActivity.flipBoardEnabled[1]) {
                         MainActivity.lastChangeTime[0] = 0;
@@ -239,7 +272,7 @@ public class AmbientDataManager {
                 }
             });
         } else if (enableWallpaper && enableLockscreen) {
-            ambientRefresh(true, new AmbientDataManager.AmbientRefreshRequest() {
+            ambientRefresh(true, timeSelect, new AmbientDataManager.AmbientRefreshRequest() {
                 @Override
                 public void onError(String message) {
                     completed.onError(message);
@@ -249,10 +282,22 @@ public class AmbientDataManager {
                 @Override
                 public void onResponse(Boolean ok) {
                     if (MainActivity.isMyServiceRunning(AmbientService.class, context)) {
-                        nextImage(false, true);
+                        if (changeImage) {
+                            nextImage(false, timeSelect, true, new NextImageResponse() {
+                                @Override
+                                public void onError(String message) {
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                                }
+
+                                @Override
+                                public void onResponse(Boolean completed) {
+
+                                }
+                            });
+                        }
                     }
 
-                    ambientRefresh(false, new AmbientDataManager.AmbientRefreshRequest() {
+                    ambientRefresh(false, timeSelect, new AmbientDataManager.AmbientRefreshRequest() {
                         @Override
                         public void onError(String message) {
                             completed.onError(message);
@@ -261,12 +306,36 @@ public class AmbientDataManager {
                         @RequiresApi(api = Build.VERSION_CODES.N)
                         @Override
                         public void onResponse(Boolean ok) {
-                            completed.onResponse(true);
-                            nextImage(false, false);
+                            if (changeImage) {
+                                nextImage(false, timeSelect, false, new NextImageResponse() {
+                                    @Override
+                                    public void onError(String message) {
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                                    }
+
+                                    @Override
+                                    public void onResponse(Boolean ok) {
+
+                                    }
+                                });
+                            }
                             if (!MainActivity.isMyServiceRunning(AmbientService.class, context)) {
                                 context.startService(new Intent(context, AmbientService.class));
                             } else {
-                                nextImage(false, true);
+                                if (changeImage) {
+                                    nextImage(false, timeSelect, true, new NextImageResponse() {
+                                        @Override
+                                        public void onError(String message) {
+                                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                                            completed.onResponse(false);
+                                        }
+
+                                        @Override
+                                        public void onResponse(Boolean ok) {
+                                            completed.onResponse(true);
+                                        }
+                                    });
+                                }
                             }
                             if (!MainActivity.flipBoardEnabled[0] || !MainActivity.flipBoardEnabled[1]) {
                                 MainActivity.lastChangeTime[0] = 0;
@@ -279,7 +348,7 @@ public class AmbientDataManager {
                 }
             });
         } else if (enableLockscreen || enableWallpaper) {
-            ambientRefresh(enableWallpaper, new AmbientDataManager.AmbientRefreshRequest() {
+            ambientRefresh(enableWallpaper, timeSelect, new AmbientDataManager.AmbientRefreshRequest() {
                 @Override
                 public void onError(String message) {
                     completed.onError(message);
@@ -292,7 +361,20 @@ public class AmbientDataManager {
                     if (!MainActivity.isMyServiceRunning(AmbientService.class, context)) {
                         context.startService(new Intent(context, AmbientService.class));
                     } else {
-                        nextImage(false, enableWallpaper);
+                        if (changeImage) {
+                            nextImage(false, timeSelect, enableWallpaper, new NextImageResponse() {
+                                @Override
+                                public void onError(String message) {
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                                    completed.onResponse(false);
+                                }
+
+                                @Override
+                                public void onResponse(Boolean ok) {
+                                    completed.onResponse(true);
+                                }
+                            });
+                        }
                     }
                     if (!MainActivity.flipBoardEnabled[0] || !MainActivity.flipBoardEnabled[1]) {
                         MainActivity.lastChangeTime[0] = 0;
@@ -305,48 +387,55 @@ public class AmbientDataManager {
         }
     }
 
+    public interface NextImageResponse {
+        void onError(String message);
+        void onResponse(Boolean completed);
+    }
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public void nextImage(Boolean firstTry, Boolean imageSelection) {
+    public void nextImage(Boolean firstTry, Boolean timeSelect, Boolean imageSelection, NextImageResponse completed) {
         deleteLastImage(imageSelection);
-        String filePrefix = "wallpaper";
-        if (!imageSelection) {
-            filePrefix = "lockscreen";
-        }
-        String finalFilePrefix = filePrefix;
-        File[] downloadedImages = context.getFilesDir().listFiles((new FileFilter(){
-            public boolean accept(File file) {
-                return file.getName().contains(String.format("adi-%s-", finalFilePrefix));
+        File[] downloadedImages = context.getFilesDir().listFiles((file -> {
+            if (timeSelect) {
+                return file.getName().contains(String.format("adi-%s-night-", (imageSelection) ? "wallpaper" : "lockscreen"));
+            } else {
+                return file.getName().contains(String.format("adi-%s-", (imageSelection) ? "wallpaper" : "lockscreen")) && !file.getName().contains("-night-");
             }
         }));
         if (downloadedImages != null && downloadedImages.length > 0) {
             int randomIndex = new Random().nextInt(downloadedImages.length);
-            String imageEid = downloadedImages[randomIndex].getName().split("-", 3)[2];
-            Log.i("NextImage", String.format("Images in store: %s - Next Image ID: %s", downloadedImages.length, imageEid));
-            setImage(imageEid, imageSelection);
-        } else if (firstTry) {
-            Log.i("NextImage", "No images in store");
-            ambientRefreshRequest(new AmbientDataManager.AmbientRefreshResponse() {
+            String imageEid = downloadedImages[randomIndex].getName().split("-", 4)[(timeSelect) ? 3 : 2];
+            Log.i("NextImage", String.format("Images in store: %s - Next Image ID: %s - Night? %s", downloadedImages.length, imageEid, timeSelect));
+            setImage(timeSelect, imageEid, imageSelection, new NextImageResponse() {
                 @Override
                 public void onError(String message) {
-                    Toast.makeText(context, String.format("AmbientDataManager Failure: %s", message), Toast.LENGTH_SHORT).show();
-                    MainActivity.pendingRefresh[(imageSelection) ? 0 : 1] = true;
+                    completed.onError(message);
                 }
 
                 @Override
-                public void onResponse(Boolean completed) {
+                public void onResponse(Boolean ok) {
+                    completed.onResponse(ok);
+                }
+            });
+        } else if (firstTry) {
+            Log.i("NextImage", "No images in store");
+            ambientRefreshRequest(timeSelect, true, new AmbientDataManager.AmbientRefreshResponse() {
+                @Override
+                public void onError(String message) {
+                    MainActivity.pendingRefresh[(imageSelection) ? 0 : 1] = true;
+                    completed.onError(String.format("AmbientDataManager Failure: %s", message));
+                }
 
+                @Override
+                public void onResponse(Boolean ok) {
+                    completed.onResponse(ok);
                 }
             });
         }
     }
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private void setImage(String imageEid, Boolean imageSelection) {
+    private void setImage(Boolean timeSelect, String imageEid, Boolean imageSelection, NextImageResponse completed) {
         Log.i("SetImage", String.format("Request to set image ID %s as wallpaper", imageEid));
-        String filePrefix = "wallpaper";
-        if (!imageSelection) {
-            filePrefix = "lockscreen";
-        }
-        final String filename = String.format("adi-%s-%s", filePrefix, imageEid);
+        final String filename = String.format("adi-%s-%s%s", (imageSelection) ? "wallpaper" : "lockscreen", (timeSelect) ? "night-" : "", imageEid);
 
         Log.i("SetImage", String.format("Using file: %s", filename));
 
@@ -355,11 +444,12 @@ public class AmbientDataManager {
             @Override
             public void onError(String message) {
                 Log.e("SetImage/Img", String.format("Wallpaper Error: %s", message));
+                completed.onError(String.format("Wallpaper Error: %s", message));
             }
 
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
-            public void onResponse(Boolean completed) {
+            public void onResponse(Boolean ok) {
                 MainActivity.lastChangeTime[(imageSelection) ? 0 : 1] = System.currentTimeMillis();
                 if (!isDisplayOn()) {
                     MainActivity.pendingTimeReset[(imageSelection) ? 0 : 1] = true;
@@ -367,18 +457,16 @@ public class AmbientDataManager {
                 lastNotificationFavRemove[(imageSelection) ? 0 : 1] = false;
                 lastNotification[(imageSelection) ? 0 : 1] = imageEid;
                 lastNotificationPreview[(imageSelection) ? 0 : 1] = null;
+                lastTimeSelect = (timeSelect);
                 updateNotification(imageSelection);
-                ambientHistorySet(imageEid, (imageSelection) ? 0 : 1);
+                ambientHistorySet(imageEid, timeSelect, (imageSelection) ? 0 : 1);
+                completed.onResponse(ok);
             }
         });
     }
     public void deleteLastImage(Boolean imageSelection) {
-        String filePrefix = "wallpaper";
-        if (!imageSelection) {
-            filePrefix = "lockscreen";
-        }
         if (lastNotification[(imageSelection) ? 0 : 1 ] != null) {
-            File oldFile = new File(context.getFilesDir(), String.format("adi-%s-%s", filePrefix, lastNotification[(imageSelection) ? 0 : 1 ]));
+            File oldFile = new File(context.getFilesDir(), String.format("adi-%s-%s%s", (imageSelection) ? "wallpaper" : "lockscreen", (lastTimeSelect) ? "night-" : "", lastNotification[(imageSelection) ? 0 : 1 ]));
             try {
                 boolean delete = oldFile.delete();
                 if (oldFile.exists()) {
@@ -399,7 +487,7 @@ public class AmbientDataManager {
         String messageEid = "";
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        SharedPreferences sharedPref = context.getSharedPreferences(String.format("seq.ambientData.%s", (imageSelection) ? "wallpaper" : "lockscreen"), Context.MODE_PRIVATE);
+        SharedPreferences sharedPref = context.getSharedPreferences(String.format("seq.ambientData.%s%s", (imageSelection) ? "wallpaper" : "lockscreen", (lastTimeSelect) ? ".night" : ""), Context.MODE_PRIVATE);
         final String responseData = sharedPref.getString(String.format("ambientResponse-%s",index), null);
         if (responseData != null) {
             JsonObject imageObject = null;
@@ -449,9 +537,9 @@ public class AmbientDataManager {
         apiRequest.setShouldCache(false);
         NetworkManager.getInstance(context).addToRequestQueue(apiRequest);
     }
-    public void ambientHistorySet (String imageEid, Integer index) {
+    public void ambientHistorySet(String imageEid, Boolean timeSelect, Integer index) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        final String url = String.format("https://%s/ambient-history?command=set&displayname=ADSMobile-%s&screen=%s&imageid=%s", prefs.getString("etServerName", "seq.moe"), prefs.getString("etDisplayName", "Untitled"), index, imageEid);
+        final String url = String.format("https://%s/ambient-history?command=set&displayname=ADSMobile-%s&screen=%s&time=%s&imageid=%s", prefs.getString("etServerName", "seq.moe"), prefs.getString("etDisplayName", "Untitled"), index, timeSelect, imageEid);
 
         StringRequest apiRequest = new StringRequest(Request.Method.GET, url, new com.android.volley.Response.Listener<String>() {
             @Override
@@ -535,6 +623,7 @@ public class AmbientDataManager {
                 @RequiresApi(api = Build.VERSION_CODES.N)
                 @Override
                 public void onResponse(Boolean ok) {
+                    Log.i("Download", String.format("Downloaded: %s (%s)", fileName, url));
                     if (imagesToDownload.length - 1 == finalI) {
                         completed.onResponse(true);
                     }
@@ -553,15 +642,12 @@ public class AmbientDataManager {
     public void updateNotification(Boolean imageSelection) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         assert manager != null;
-        String filePrefix = "wallpaper";
-        if (!imageSelection) {
-            filePrefix = "lockscreen";
-        }
-        SharedPreferences sharedPref = context.getSharedPreferences(String.format("seq.ambientData.%s", filePrefix), Context.MODE_PRIVATE);
+        final String prefsFile = String.format("seq.ambientData.%s%s", (imageSelection) ? "wallpaper" : "lockscreen", (lastTimeSelect) ? ".night" : "");
+        SharedPreferences sharedPref = context.getSharedPreferences(prefsFile, Context.MODE_PRIVATE);
         JsonObject imageObject = null;
         final String requestedImage = String.format("ambientResponse-%s", lastNotification[(imageSelection) ? 0 : 1 ]);
         final String responseData = sharedPref.getString(requestedImage, null);
-        Log.v("Notification", String.format("Requesting Image : %s", requestedImage));
+        Log.v("Notification", String.format("Using File: %s - Requesting Image : %s", prefsFile, requestedImage));
         if (responseData != null) {
             try {
                 imageObject = new Gson().fromJson(responseData, JsonObject.class).getAsJsonObject("nameValuePairs");
@@ -624,7 +710,7 @@ public class AmbientDataManager {
                 if (imageObject.has("fileColor")) {
                     final int color = imageObject.get("fileColor").getAsInt();
                     notification.setColor(color);
-                    //notification.setColorized(true);
+                    notification.setColorized(true);
                 }
             } catch (Exception e) {
                 Log.e("NotifiManager", String.format("Failed to load bitmap for notification: %s", e));
@@ -638,8 +724,6 @@ public class AmbientDataManager {
 
     private Boolean isDisplayOn() {
         PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        if (powerManager.isInteractive()){ return true; }
-        return false;
+        return powerManager.isInteractive();
     }
-
 }

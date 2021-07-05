@@ -16,7 +16,6 @@
             android:theme="@style/Theme.ADSMobile">
         <activity
                 android:name=".SettingsActivity"
-                android:screenOrientation="portrait"
                 android:parentActivityName="moe.seq.ads.mobile.MainActivity"
                 android:label="@string/title_activity_settings">
         </activity>
@@ -32,6 +31,9 @@
             <intent-filter>
                 <action android:name="android.intent.action.SCREEN_OFF" />
                 <action android:name="android.intent.action.SCREEN_ON" />
+                <action android:name="android.intent.action.TIME_CHANGED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
 
@@ -46,8 +48,7 @@
             </intent-filter>
         </receiver>
 
-        <activity android:name=".MainActivity"
-                  android:screenOrientation="portrait" >
+        <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

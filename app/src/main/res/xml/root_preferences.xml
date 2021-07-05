@@ -52,6 +52,29 @@
                 android:title="Wallpaper Lifetime"/>
     </PreferenceCategory>
     <PreferenceCategory
+            android:title="Day Night Cycle">
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Time Cycle" android:key="swCycleConfig"
+                android:summary="Enabled separate configurations for day and night"/>
+        <ListPreference
+                android:dialogTitle="Daytime"
+                android:entries="@array/settingsClockTimeNames"
+                android:entryValues="@array/settingsClockTimeValues"
+                android:key="ltCycleDay"
+                android:defaultValue="5"
+                android:summary="Time to use day settings"
+                android:title="Start of Day"/>
+        <ListPreference
+                android:dialogTitle="Nighttime"
+                android:entries="@array/settingsClockTimeNames"
+                android:entryValues="@array/settingsClockTimeValues"
+                android:key="ltCycleNight"
+                android:defaultValue="20"
+                android:summary="Time to use night settings"
+                android:title="End of Day"/>
+    </PreferenceCategory>
+    <PreferenceCategory
             android:title="Request Options">
         <EditTextPreference
                 android:defaultValue="seq.moe"
