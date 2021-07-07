@@ -417,17 +417,40 @@ public class AmbientDataManager {
                 }
             });
         } else if (firstTry) {
-            Log.i("NextImage", "No images in store");
-            ambientRefreshRequest(timeSelect, true, new AmbientDataManager.AmbientRefreshResponse() {
+            Log.i("NextImage", "No images in store, downloading more images now...");
+            ambientRefresh(imageSelection, timeSelect, new AmbientDataManager.AmbientRefreshRequest() {
                 @Override
                 public void onError(String message) {
                     MainActivity.pendingRefresh[(imageSelection) ? 0 : 1] = true;
                     completed.onError(String.format("AmbientDataManager Failure: %s", message));
                 }
 
+                @RequiresApi(api = Build.VERSION_CODES.N)
                 @Override
                 public void onResponse(Boolean ok) {
-                    completed.onResponse(ok);
+                    completed.onResponse(true);
+                    if (!MainActivity.isMyServiceRunning(AmbientService.class, context)) {
+                        context.startService(new Intent(context, AmbientService.class));
+                    } else {
+                        nextImage(false, timeSelect, imageSelection, new NextImageResponse() {
+                            @Override
+                            public void onError(String message) {
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                                completed.onResponse(false);
+                            }
+
+                            @Override
+                            public void onResponse(Boolean ok) {
+                                completed.onResponse(true);
+                            }
+                        });
+                    }
+                    if (!MainActivity.flipBoardEnabled[0] || !MainActivity.flipBoardEnabled[1]) {
+                        MainActivity.lastChangeTime[0] = 0;
+                        MainActivity.lastChangeTime[1] = 0;
+                        MainActivity.flipBoardEnabled[0] = true;
+                        MainActivity.flipBoardEnabled[1] = true;
+                    }
                 }
             });
         }
