@@ -460,7 +460,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                     case "OPEN_IMAGE":
                         if (index != -1) {
                             SharedPreferences sharedPref = context.getSharedPreferences(String.format("seq.ambientData.%s%s", (imageSelection == 0) ? "wallpaper" : "lockscreen", (timeSelect) ? ".night" : ""), Context.MODE_PRIVATE);
-                            SharedPreferences screenPref = context.getSharedPreferences(String.format("seq.settings.%s", (imageSelection == 0) ? "wallpaper" : "lockscreen"), Context.MODE_PRIVATE);
+                            SharedPreferences screenPref = context.getSharedPreferences(String.format("seq.settings.%s%s", (imageSelection == 0) ? "wallpaper" : "lockscreen", (timeSelect) ? ".night" : ""), Context.MODE_PRIVATE);
                             final String responseData = sharedPref.getString(String.format("ambientResponse-%s", index), null);
                             if (responseData != null) {
                                 JsonObject imageObject = null;
