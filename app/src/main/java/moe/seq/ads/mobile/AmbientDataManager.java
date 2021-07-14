@@ -102,7 +102,7 @@ public class AmbientDataManager {
         }
 
 
-        final String url = String.format("https://%s/ambient-refresh?nocds=true&%s%s%s%s%s%s%s%s%s%s%s%s", prefs.getString("etServerName", "seq.moe"), imagesToKeep, darkSelection, colorSelection, minResolution, folderName, albumName, searchQuery, aspectRatio, pinsOnly, nsfwResults, maxAge, displayName);
+        final String url = String.format("https://%s/ambient-refresh?json=true&nocds=true&%s%s%s%s%s%s%s%s%s%s%s%s", prefs.getString("etServerName", "seq.moe"), imagesToKeep, darkSelection, colorSelection, minResolution, folderName, albumName, searchQuery, aspectRatio, pinsOnly, nsfwResults, maxAge, displayName);
 
         Log.i("ADM/Dispatch", url);
 
@@ -114,102 +114,107 @@ public class AmbientDataManager {
                     public void onResponse(JSONObject response) {
                         Log.v("ADM/Response", response.toString());
                         try {
-                            // Get Required Response
-                            JSONArray imageResponse = response.getJSONArray("randomImagev2");
-                            if (imageResponse.length() > 0) {
-                                String[][] dataArray = new String[imageResponse.length()][2];
-                                ArrayList<String> imagesDownloaded = new ArrayList<>();
-                                ArrayList<String> imagesKeys = new ArrayList<>();
+                            if (response.has("randomImagev2")) {
+                                // Get Required Response
+                                JSONArray imageResponse = response.getJSONArray("randomImagev2");
+                                if (imageResponse.length() > 0) {
+                                    String[][] dataArray = new String[imageResponse.length()][2];
+                                    ArrayList<String> imagesDownloaded = new ArrayList<>();
+                                    ArrayList<String> imagesKeys = new ArrayList<>();
 
-                                // Proccess Images in Response
-                                for (int i = 0; i < imageResponse.length(); i++) {
-                                    // Get Image in Response
-                                    JSONObject singleImage = (JSONObject) imageResponse.get(i);
-                                    JSONObject dataImage = new JSONObject();
+                                    // Proccess Images in Response
+                                    for (int i = 0; i < imageResponse.length(); i++) {
+                                        // Get Image in Response
+                                        JSONObject singleImage = (JSONObject) imageResponse.get(i);
+                                        JSONObject dataImage = new JSONObject();
 
-                                    // Generate Object for storage
-                                    final String fullImageURL = singleImage.getString("fullImage");
-                                    final String previewImageURL = singleImage.getString("previewImage");
-                                    final int imageEid = singleImage.getInt("eid");
-                                    final String fileName = String.format("adi-%s-%s%s", finalFilePrefix, (timeSelection) ? "night-" : "", imageEid);
-                                    final String previewName = String.format("adp-%s-%s%s", finalFilePrefix, (timeSelection) ? "night-" : "", imageEid);
-                                    if (singleImage.getString("colorR") != null) {
-                                        final int imageColor = android.graphics.Color.rgb(
-                                                Integer.parseInt(singleImage.getString("colorR")),
-                                                Integer.parseInt(singleImage.getString("colorG")),
-                                                Integer.parseInt(singleImage.getString("colorB")));
-                                        dataImage.put("fileColor", imageColor);
-                                    }
-                                    dataImage.put("fileName", fileName);
-                                    dataImage.put("fileUrl", fullImageURL);
-                                    dataImage.put("filePreviewUrl", previewImageURL);
-                                    dataImage.put("filePreviewName", previewName);
-                                    dataImage.put("fileDate", singleImage.getString("date"));
-                                    dataImage.put("fileContents", singleImage.getString("contentClean"));
-                                    dataImage.put("fileEid", imageEid);
-                                    dataImage.put("fileId", singleImage.getInt("id"));
-                                    dataImage.put("fileChannelId", singleImage.getString("channelId"));
-                                    dataImage.put("location", String.format("%s:/%s/%s",
-                                            singleImage.getString("serverName").toUpperCase(),
-                                            singleImage.getString("className"),
-                                            singleImage.getString("channelName")));
-                                    dataImage.put("fileFav", singleImage.getBoolean("pinned"));
+                                        // Generate Object for storage
+                                        final String fullImageURL = singleImage.getString("fullImage");
+                                        final String previewImageURL = singleImage.getString("previewImage");
+                                        final int imageEid = singleImage.getInt("eid");
+                                        final String fileName = String.format("adi-%s-%s%s", finalFilePrefix, (timeSelection) ? "night-" : "", imageEid);
+                                        final String previewName = String.format("adp-%s-%s%s", finalFilePrefix, (timeSelection) ? "night-" : "", imageEid);
+                                        if (singleImage.getString("colorR") != null) {
+                                            final int imageColor = android.graphics.Color.rgb(
+                                                    Integer.parseInt(singleImage.getString("colorR")),
+                                                    Integer.parseInt(singleImage.getString("colorG")),
+                                                    Integer.parseInt(singleImage.getString("colorB")));
+                                            dataImage.put("fileColor", imageColor);
+                                        }
+                                        dataImage.put("fileName", fileName);
+                                        dataImage.put("fileUrl", fullImageURL);
+                                        dataImage.put("filePreviewUrl", previewImageURL);
+                                        dataImage.put("filePreviewName", previewName);
+                                        dataImage.put("fileDate", singleImage.getString("date"));
+                                        dataImage.put("fileContents", singleImage.getString("contentClean"));
+                                        dataImage.put("fileEid", imageEid);
+                                        dataImage.put("fileId", singleImage.getInt("id"));
+                                        dataImage.put("fileChannelId", singleImage.getString("channelId"));
+                                        dataImage.put("location", String.format("%s:/%s/%s",
+                                                singleImage.getString("serverName").toUpperCase(),
+                                                singleImage.getString("className"),
+                                                singleImage.getString("channelName")));
+                                        dataImage.put("fileFav", singleImage.getBoolean("pinned"));
 
-                                    // Save Object to Storage
-                                    Gson gson = new Gson();
-                                    String json = gson.toJson(dataImage);
-                                    prefsEditor.putString(String.format("ambientResponse-%s", imageEid), json).apply();
+                                        // Save Object to Storage
+                                        Gson gson = new Gson();
+                                        String json = gson.toJson(dataImage);
+                                        prefsEditor.putString(String.format("ambientResponse-%s", imageEid), json).apply();
 
-                                    dataArray[i][0] = fileName;
-                                    imagesDownloaded.add(fileName);
-                                    imagesKeys.add(String.format("ambientResponse-%s", imageEid));
-                                    dataArray[i][1] = fullImageURL;
-                                    if (i == imageResponse.length() -1) {
-                                        // Request Images to be downloaded
-                                        File[] oldImages = context.getFilesDir().listFiles((new FileFilter(){
-                                            public boolean accept(File file) {
-                                                if (timeSelection) {
-                                                    return file.getName().contains(String.format("adi-%s-night-", finalFilePrefix)) && !imagesDownloaded.contains(file.getName());
-                                                } else {
-                                                    return file.getName().contains(String.format("adi-%s-", finalFilePrefix)) && !imagesDownloaded.contains(file.getName()) && !file.getName().contains("-night-");
+                                        dataArray[i][0] = fileName;
+                                        imagesDownloaded.add(fileName);
+                                        imagesKeys.add(String.format("ambientResponse-%s", imageEid));
+                                        dataArray[i][1] = fullImageURL;
+                                        if (i == imageResponse.length() - 1) {
+                                            // Request Images to be downloaded
+                                            File[] oldImages = context.getFilesDir().listFiles((new FileFilter() {
+                                                public boolean accept(File file) {
+                                                    if (timeSelection) {
+                                                        return file.getName().contains(String.format("adi-%s-night-", finalFilePrefix)) && !imagesDownloaded.contains(file.getName());
+                                                    } else {
+                                                        return file.getName().contains(String.format("adi-%s-", finalFilePrefix)) && !imagesDownloaded.contains(file.getName()) && !file.getName().contains("-night-");
+                                                    }
+
                                                 }
-
-                                            }
-                                        }));
-                                        if (oldImages != null && oldImages.length > 0) {
-                                            for (File file : oldImages) {
-                                                if (!file.isDirectory()) {
-                                                    try {
-                                                        boolean fileRm = file.delete();
-                                                        if (fileRm) {
-                                                            Log.i("FilesManager", String.format("Deleted: %s", file.getAbsolutePath()));
-                                                        } else {
-                                                            Log.i("FilesManager", String.format("Failed to: %s", file.getAbsolutePath()));
+                                            }));
+                                            if (oldImages != null && oldImages.length > 0) {
+                                                for (File file : oldImages) {
+                                                    if (!file.isDirectory()) {
+                                                        try {
+                                                            boolean fileRm = file.delete();
+                                                            if (fileRm) {
+                                                                Log.i("FilesManager", String.format("Deleted: %s", file.getAbsolutePath()));
+                                                            } else {
+                                                                Log.i("FilesManager", String.format("Failed to: %s", file.getAbsolutePath()));
+                                                            }
+                                                        } catch (Exception e) {
+                                                            Log.i("FilesManager", String.format("Failed to delete %s: %s", file.getAbsolutePath(), e));
                                                         }
-                                                    } catch (Exception e) {
-                                                        Log.i("FilesManager", String.format("Failed to delete %s: %s", file.getAbsolutePath(), e));
+                                                    }
+                                                }
+                                                for (Map.Entry<String, ?> entry : allOldKeys.entrySet()) {
+                                                    if (!imagesKeys.contains(entry.getKey())) {
+                                                        sharedPref.edit().remove(entry.getKey()).apply();
                                                     }
                                                 }
                                             }
-                                            for (Map.Entry<String, ?> entry: allOldKeys.entrySet()) {
-                                                if (!imagesKeys.contains(entry.getKey())) {
-                                                    sharedPref.edit().remove(entry.getKey()).apply();
+                                            downloadImages(dataArray, new DownloadImageResponse() {
+                                                @Override
+                                                public void onResponse(Boolean ok) {
+                                                    completed.onResponse(true);
+                                                    MainActivity.pendingRefresh[(wallpaperSelection) ? 0 : 1] = false;
+                                                    Toast.makeText(context, String.format("Refresh for %s%s Complete!", finalFilePrefix, (timeSelection) ? ".night" : ""), Toast.LENGTH_SHORT).show();
                                                 }
-                                            }
+                                            });
                                         }
-                                        downloadImages(dataArray, new DownloadImageResponse() {
-                                            @Override
-                                            public void onResponse(Boolean ok) {
-                                                completed.onResponse(true);
-                                                MainActivity.pendingRefresh[(wallpaperSelection) ? 0 : 1] = false;
-                                                Toast.makeText(context, String.format("Refresh for %s%s Complete!", finalFilePrefix, (timeSelection) ? ".night" : ""), Toast.LENGTH_SHORT).show();
-                                            }
-                                        });
                                     }
+                                } else {
+                                    Log.e("ADM/Response", "No Results Found");
+                                    completed.onError("No Results for your settings, please check via Sequenzia if they will return results!");
                                 }
-                            } else {
-                                Log.e("ADM/Response", "No Results Found");
-                                completed.onError("No Results for your settings, please check via Sequenzia if they will return results!");
+                            } else if (response.has("loggedin")) {
+                                AuthWare.authComplete = false;
+                                completed.onError("You must login");
                             }
                         } catch ( JSONException e) {
                             Log.e("ADM/Response", String.format("Failed to get required data from server: %s", e));

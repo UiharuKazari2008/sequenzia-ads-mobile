@@ -96,6 +96,8 @@ public class MainActivity extends AppCompatActivity {
         bLoginButton = findViewById(R.id.loginButton);
         bEnableTimer = findViewById(R.id.startRefreshTimer);
         Button bEditor = findViewById(R.id.editConfigFile);
+        Button bLogoutButton = findViewById(R.id.logoutButton);
+        Button bRefreshButton = findViewById(R.id.refreshButton);
         //bDownloadNowButton = findViewById(R.id.downloadImages);
         //Button bSettingsButton = findViewById(R.id.settingsButton);
         tAuthText = findViewById(R.id.codeHolder);
@@ -258,7 +260,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button bLogoutButton = findViewById(R.id.logoutButton);
         bLogoutButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -267,6 +268,25 @@ public class MainActivity extends AppCompatActivity {
                 tAuthText.setText("......");
                 tErrorText.setText("");
                 AuthWare.authComplete = false;
+            }
+        });
+
+        bRefreshButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                authware.refreshSession(new AuthWare.AuthWareRefreshAccount() {
+                    @Override
+                    public void onError(String message) {
+                        Toast.makeText(MainActivity.this, String.format("Failed to refresh account: %s", message), Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onResponse(Boolean ok) {
+                        if (ok) {
+                            Toast.makeText(MainActivity.this, "Refreshed User Account", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
             }
         });
 
