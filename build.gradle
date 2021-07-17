@@ -3,10 +3,14 @@ buildscript {
     repositories {
         google()
         mavenCentral()
+        // Using Bintray repository:
+        maven { url "http://dl.bintray.com/davideas/maven" }
+        // or Gradle plugins repository:
+        maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:4.1.1'
-
+        classpath "eu.davidea:grabver:2.0.2"
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
     }
