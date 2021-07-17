@@ -36,8 +36,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView tAuthText, tErrorText;
     public static final String NOTIFICATION_CHANNEL_ID_1 = "moe.seq.ads.mobile.display.1";
     public static final String NOTIFICATION_CHANNEL_ID_2 = "moe.seq.ads.mobile.display.2";
-    public static final String channelName1 = "Ambient Display Service - Wallpaper";
-    public static final String channelName2 = "Ambient Display Service - Lockscreen";
+    public static final String channelName1 = "Dynamic Wallpaper Service - Wallpaper";
+    public static final String channelName2 = "Dynamic Wallpaper Service - Lockscreen";
 
     static SharedPreferences prefs;
 
@@ -77,12 +77,14 @@ public class MainActivity extends AppCompatActivity {
         NotificationChannel channel1 = new NotificationChannel(NOTIFICATION_CHANNEL_ID_1, channelName1, NotificationManager.IMPORTANCE_MIN);
         notificationManager.createNotificationChannel(channel1);
         channel1.setLightColor(Color.YELLOW);
+        channel1.setShowBadge(false);
         channel1.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         channel1.setDescription("Foreground Service for Ambient Display Service");
 
         NotificationChannel channel2 = new NotificationChannel(NOTIFICATION_CHANNEL_ID_2, channelName2, NotificationManager.IMPORTANCE_MIN);
         notificationManager.createNotificationChannel(channel2);
         channel2.setLightColor(Color.YELLOW);
+        channel2.setShowBadge(false);
         channel2.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         channel2.setDescription("Foreground Service for Ambient Display Service");
 
@@ -227,7 +229,7 @@ public class MainActivity extends AppCompatActivity {
                                     dialog.setNeutralButton("via Browser",
                                             new DialogInterface.OnClickListener() {
                                                 public void onClick(DialogInterface dialog, int which) {
-                                                    Uri fileURL = Uri.parse(String.format("https://%s/transfer?type=0&deviceID=%s", prefs.getString("etServerName", "seq.moe"), sessionId));
+                                                    Uri fileURL = Uri.parse(String.format("%s://%s/transfer?type=0&deviceID=%s", (prefs.getBoolean("swHTTPS", true)) ? "https" : "http", prefs.getString("etServerName", "seq.moe"), sessionId));
                                                     MainActivity.this.startActivity(new Intent(Intent.ACTION_VIEW, fileURL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                                                 }
                                             });
@@ -345,7 +347,9 @@ public class MainActivity extends AppCompatActivity {
                     menuOptions.add("lockscreen");
                     if (prefs.getBoolean("swCycleConfig", false)) {
                         menuOptions.add("wallpaper.night");
-                        menuOptions.add("lockscreen.night");
+                        if (!prefs.getBoolean("swSyncNightWallpaper", true)) {
+                            menuOptions.add("lockscreen.night");
+                        }
                     }
                 }
                 configOptions = menuOptions.toArray(new String[menuOptions.size()]);
@@ -616,7 +620,7 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences.Editor settings = this.getSharedPreferences(String.format("seq.settings.%s%s", settingsName, (nightMode) ? ".night" : ""), Context.MODE_PRIVATE).edit();
         SharedPreferences.Editor prefsEditor = prefs.edit();
 
-        if (importType.equals("1") && prefs.getBoolean("swSyncWallpaper", false)) {
+        if (importType.equals("1") && prefs.getBoolean(String.format("swSync%sWallpaper", (nightMode) ? "Night" : ""), true)) {
             SharedPreferences wallPrefs = this.getSharedPreferences(String.format("seq.settings.wallpaper%s", (nightMode) ? ".night" : ""), Context.MODE_PRIVATE);
             SharedPreferences lockPrefs = this.getSharedPreferences(String.format("seq.settings.lockscreen%s", (nightMode) ? ".night" : ""), Context.MODE_PRIVATE);
             Map<String, ?> lockSettings = lockPrefs.getAll();
@@ -633,7 +637,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        prefsEditor.putBoolean("swSyncWallpaper", importType.equals("0")).apply();
+        prefsEditor.putBoolean(String.format("swSync%sWallpaper", (nightMode) ? "Night" : ""), importType.equals("0")).apply();
 
         if (isMyServiceRunning(AmbientService.class, this) && ((AmbientDataManager.lastTimeSelect && nightMode) || (!AmbientDataManager.lastTimeSelect && !nightMode))) {
             stopService(new Intent(MainActivity.this, AmbientService.class));

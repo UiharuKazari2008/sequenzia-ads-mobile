@@ -37,15 +37,17 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
             broadcastDelay = null;
         }
         AmbientDataManager ambientDataManager = new AmbientDataManager(context);
+
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        final boolean syncWallpapers = prefs.getBoolean("swSyncWallpaper", true);
-        final boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
-        final boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
         final boolean enableTimeCycle = prefs.getBoolean("swCycleConfig", false);
         final int currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         final int dayTimeStart = Integer.parseInt(prefs.getString("ltCycleDay", "5"));
         final int dayTimeEnd = Integer.parseInt(prefs.getString("ltCycleNight", "20"));
         boolean timeSelect = (enableTimeCycle && (dayTimeEnd <= currentHour || currentHour < dayTimeStart));
+
+        final boolean syncWallpapers = prefs.getBoolean(String.format("swSync%sWallpaper", (timeSelect) ? "Night" : ""), true);
+        final boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
+        final boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
 
         switch (intent.getAction()) {
             case Intent.ACTION_TIME_CHANGED:
@@ -325,7 +327,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                                     }
                                 });
                             }
-                            if (prefs.getBoolean("swEnableLockscreen", false) && !prefs.getBoolean("swSyncWallpaper", true)) {
+                            if (prefs.getBoolean("swEnableLockscreen", false) && !prefs.getBoolean(String.format("swSync%sWallpaper", (finalTimeSelect3) ? "Night" : ""), true)) {
                                 ambientDataManager.nextImage(true, finalTimeSelect3, false, new AmbientDataManager.NextImageResponse() {
                                     @Override
                                     public void onError(String message) {
@@ -472,7 +474,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                                 try {
                                     assert imageObject != null;
                                     String messageId = imageObject.get("fileEid").getAsString();
-                                    Uri fileURL = Uri.parse(String.format("https://%s/gallery?nsfw=%s&search=eid:%s", prefs.getString("etServerName", "seq.moe"), screenPref.getString("nsfwEnabled", "false"), messageId));
+                                    Uri fileURL = Uri.parse(String.format("%s://%s/gallery?nsfw=%s&search=eid:%s", (prefs.getBoolean("swHTTPS", true)) ? "https" : "http", prefs.getString("etServerName", "seq.moe"), screenPref.getString("nsfwEnabled", "false"), messageId));
                                     context.startActivity(new Intent(Intent.ACTION_VIEW, fileURL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                                 } catch (Exception e) {
                                     Toast.makeText(context, String.format("Failed to open: %s", e), Toast.LENGTH_SHORT).show();

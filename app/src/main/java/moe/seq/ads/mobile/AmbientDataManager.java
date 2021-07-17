@@ -27,7 +27,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 public class AmbientDataManager {
     public static String[] lastNotification = new String[] {null, null};
@@ -102,7 +105,7 @@ public class AmbientDataManager {
         }
 
 
-        final String url = String.format("https://%s/ambient-refresh?json=true&nocds=true&%s%s%s%s%s%s%s%s%s%s%s%s", prefs.getString("etServerName", "seq.moe"), imagesToKeep, darkSelection, colorSelection, minResolution, folderName, albumName, searchQuery, aspectRatio, pinsOnly, nsfwResults, maxAge, displayName);
+        final String url = String.format("%s://%s/ambient-refresh?json=true&nocds=true&%s%s%s%s%s%s%s%s%s%s%s%s", (prefs.getBoolean("swHTTPS", true)) ? "https" : "http", prefs.getString("etServerName", "seq.moe"), imagesToKeep, darkSelection, colorSelection, minResolution, folderName, albumName, searchQuery, aspectRatio, pinsOnly, nsfwResults, maxAge, displayName);
 
         Log.i("ADM/Dispatch", url);
 
@@ -237,7 +240,7 @@ public class AmbientDataManager {
     }
     public void ambientRefreshRequest (boolean timeSelect, boolean changeImage, AmbientRefreshResponse completed) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean syncWallpapers = prefs.getBoolean("swSyncWallpaper", true);
+        boolean syncWallpapers = prefs.getBoolean(String.format("swSync%sWallpaper", (timeSelect) ? "Night" : ""), true);
         boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
         boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
         if (syncWallpapers && (enableLockscreen || enableWallpaper)) {
@@ -468,7 +471,7 @@ public class AmbientDataManager {
         Log.i("SetImage", String.format("Using file: %s", filename));
 
         ImageManager imageManager = new ImageManager(context);
-        imageManager.setWallpaperImage(filename, imageSelection, new ImageManager.ImageManagerResponse() {
+        imageManager.setWallpaperImage(filename, imageSelection, timeSelect, new ImageManager.ImageManagerResponse() {
             @Override
             public void onError(String message) {
                 Log.e("SetImage/Img", String.format("Wallpaper Error: %s", message));
@@ -536,7 +539,7 @@ public class AmbientDataManager {
         String finalChannelId = channelId;
         String finalMessageEid = messageEid;
 
-        final String url = String.format("https://%s/actions/v1", prefs.getString("etServerName", "seq.moe"));
+        final String url = String.format("%s://%s/actions/v1", (prefs.getBoolean("swHTTPS", true)) ? "https" : "http", prefs.getString("etServerName", "seq.moe"));
 
         StringRequest apiRequest = new StringRequest(Request.Method.POST, url, new com.android.volley.Response.Listener<String>() {
             @RequiresApi(api = Build.VERSION_CODES.O)
@@ -567,7 +570,7 @@ public class AmbientDataManager {
     }
     public void ambientHistorySet(String imageEid, Boolean timeSelect, Integer index) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        final String url = String.format("https://%s/ambient-history?command=set&displayname=ADSMobile-%s&screen=%s&time=%s&imageid=%s", prefs.getString("etServerName", "seq.moe"), prefs.getString("etDisplayName", "Untitled"), index, timeSelect, imageEid);
+        final String url = String.format("%s://%s/ambient-history?command=set&displayname=ADSMobile-%s&screen=%s&time=%s&imageid=%s", (prefs.getBoolean("swHTTPS", true)) ? "https" : "http", prefs.getString("etServerName", "seq.moe"), prefs.getString("etDisplayName", "Untitled"), index, timeSelect, imageEid);
 
         StringRequest apiRequest = new StringRequest(Request.Method.GET, url, new com.android.volley.Response.Listener<String>() {
             @Override
@@ -668,6 +671,11 @@ public class AmbientDataManager {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void updateNotification(Boolean imageSelection) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean syncWallpapers = prefs.getBoolean(String.format("swSync%sWallpaper", (lastTimeSelect) ? "Night" : ""), true);
+        final boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
+        final boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
+
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         assert manager != null;
         final String prefsFile = String.format("seq.ambientData.%s%s", (imageSelection) ? "wallpaper" : "lockscreen", (lastTimeSelect) ? ".night" : "");
@@ -699,7 +707,7 @@ public class AmbientDataManager {
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
                     .setTicker(notificationText)
                     .setContentTitle(notificationText)
-                    .setSubText((imageSelection) ? "Wallpaper" : "Lockscreen")
+                    .setSubText((imageSelection && enableWallpaper) ? "Wallpaper" : "Lockscreen")
                     .setContentIntent(openImageIntent)
                     .setOngoing(true);
             final String notificationContents = imageObject.get("fileContents").getAsString();
@@ -744,7 +752,17 @@ public class AmbientDataManager {
                 Log.e("NotifiManager", String.format("Failed to load bitmap for notification: %s", e));
             }
             notification.setStyle(mediaStyle);
-            manager.notify((imageSelection) ? 100 : 200, notification.build());
+            manager.notify((!imageSelection && enableWallpaper && enableLockscreen) ? 200 : 100, notification.build());
+            if (syncWallpapers || !(enableWallpaper && enableLockscreen) && manager.getActiveNotifications().length == 2) {
+                Notification.Builder lockNotification = new Notification.Builder(context, MainActivity.NOTIFICATION_CHANNEL_ID_2)
+                        .setSmallIcon(R.drawable.ic_notification)
+                        .setVisibility(Notification.VISIBILITY_PUBLIC)
+                        .setContentText("Inactive")
+                        .setSubText("Lockscreen")
+                        .setOngoing(false);
+                manager.notify(200, lockNotification.build());
+                manager.cancel(200);
+            }
         } else {
             Log.e("Notification", "Failed to get data for notification");
         }

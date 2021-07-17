@@ -45,7 +45,7 @@ public class AuthWare {
                 Log.v("AuthWare", String.format("Found Stored Static Login Key: %s", tokenLogin));
             }
             // Generate URL
-            final String url = String.format("https://%s/ping?json=true%s", prefs.getString("etServerName", "seq.moe"), tokenLogin);
+            final String url = String.format("%s://%s/ping?json=true%s", (prefs.getBoolean("swHTTPS", true)) ? "https" : "http", prefs.getString("etServerName", "seq.moe"), tokenLogin);
 
             // Request JSON version of Ping request
             JsonObjectRequest loginCheckRequest = new JsonObjectRequest(Request.Method.GET, url, null,
@@ -176,7 +176,7 @@ public class AuthWare {
         authComplete = false;
 
 
-        final String url = String.format("https://%s/discord/destroy", prefs.getString("etServerName", "seq.moe"));
+        final String url = String.format("%s://%s/discord/destroy", (prefs.getBoolean("swHTTPS", true)) ? "https" : "http", prefs.getString("etServerName", "seq.moe"));
 
         // Request to close session
         StringRequest destroyRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
@@ -205,7 +205,7 @@ public class AuthWare {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
 
         Log.v("AuthWare/StaticLogin", "Requested to get static login token");
-        final String url = String.format("https://%s/discord/token?action=get", prefs.getString("etServerName", "seq.moe"));
+        final String url = String.format("%s://%s/discord/token?action=get", (prefs.getBoolean("swHTTPS", true)) ? "https" : "http", prefs.getString("etServerName", "seq.moe"));
         StringRequest tokenRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
@@ -235,7 +235,7 @@ public class AuthWare {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
 
         Log.v("AuthWare/StaticLogin", "Requested to generate static login token");
-        final String url = String.format("https://%s/discord/token?action=renew", prefs.getString("etServerName", "seq.moe"));
+        final String url = String.format("%s://%s/discord/token?action=renew", (prefs.getBoolean("swHTTPS", true)) ? "https" : "http", prefs.getString("etServerName", "seq.moe"));
         StringRequest tokenRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
@@ -264,7 +264,7 @@ public class AuthWare {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
 
         Log.v("AuthWare/Session", "Session Refresh Requested");
-        final String url = String.format("https://%s/discord/refresh", prefs.getString("etServerName", "seq.moe"));
+        final String url = String.format("%s://%s/discord/refresh", (prefs.getBoolean("swHTTPS", true)) ? "https" : "http", prefs.getString("etServerName", "seq.moe"));
         StringRequest tokenRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {

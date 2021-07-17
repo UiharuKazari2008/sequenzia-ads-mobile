@@ -30,7 +30,7 @@ public class ImageManager {
         void onResponse(Boolean completed);
     }
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public void setWallpaperImage(String fileName, Boolean imageSelection, ImageManagerResponse cb) {
+    public void setWallpaperImage(String fileName, Boolean imageSelection, Boolean timeSelect, ImageManagerResponse cb) {
         WallpaperManager manager = WallpaperManager.getInstance(context);
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean centerImage = prefs.getBoolean("swCenter", false);
@@ -41,20 +41,20 @@ public class ImageManager {
             Bitmap bitmap = BitmapFactory.decodeStream(fileStream);
             try {
                 int displaySelect;
-                if (prefs.getBoolean("swSyncWallpaper", true)) {
+                if (prefs.getBoolean(String.format("swSync%sWallpaper", (timeSelect) ? "Night" : ""), true)) {
                     boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
                     boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
-                    boolean alternateWallpapers = prefs.getBoolean("swAlternateWallpaper", false);
+                    boolean alternateWallpapers = prefs.getBoolean(String.format("swAlternate%sWallpaper", (timeSelect) ? "Night" : ""), false);
                     displaySelect = 0;
                     if (alternateWallpapers) {
-                        final boolean lastSet = prefs.getBoolean("displayFlip", false);
+                        final boolean lastSet = prefs.getBoolean(String.format("display%sFlip", (timeSelect) ? "Night" : ""), false);
                         if (lastSet) {
                             displaySelect = WallpaperManager.FLAG_LOCK;
                         } else {
                             displaySelect = WallpaperManager.FLAG_SYSTEM;
                         }
                         SharedPreferences.Editor prefsEditor = prefs.edit();
-                        prefsEditor.putBoolean("displayFlip", !lastSet);
+                        prefsEditor.putBoolean(String.format("display%sFlip", (timeSelect) ? "Night" : ""), !lastSet);
                         prefsEditor.apply();
                     } else {
                         if (enableLockscreen) {

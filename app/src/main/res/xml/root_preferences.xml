@@ -12,12 +12,26 @@
                 android:defaultValue="true"
                 android:title="Enable History" android:key="swHistory"
                 android:summary="Sends Displayed Images to Ambient Display History"/>
+        <EditTextPreference
+                android:defaultValue="Untitled"
+                android:selectAllOnFocus="true"
+                android:singleLine="true"
+                android:title="Device Name" android:key="etDisplayName"
+                android:summary="Name that will display in history"/>
+        <ListPreference
+                android:dialogTitle="Image Count"
+                android:entries="@array/settingsImageCountNames"
+                android:entryValues="@array/settingsImageCountValues"
+                android:key="ltImageCount"
+                android:summary="Download these many images for offline access"
+                android:defaultValue="5"
+                android:title="Number of Images"/>
     </PreferenceCategory>
     <PreferenceCategory
             android:title="Homescreen">
         <SwitchPreference
                 android:defaultValue="false"
-                android:title="Change Homescreen" android:key="swEnableWallpaper"
+                android:title="Enable Homescreen" android:key="swEnableWallpaper"
                 android:summary="Change Homescreen Wallpaper"/>
         <ListPreference
                 android:dialogTitle="Homescreen Lifetime"
@@ -40,7 +54,7 @@
             android:title="Lockscreen">
         <SwitchPreference
                 android:defaultValue="false"
-                android:title="Change Lockscreen" android:key="swEnableLockscreen"
+                android:title="Enable Lockscreen" android:key="swEnableLockscreen"
                 android:summary="Change Lockscreen Wallpaper"/>
         <ListPreference
                 android:dialogTitle="Lockscreen Lifetime"
@@ -52,11 +66,19 @@
                 android:title="Wallpaper Lifetime"/>
     </PreferenceCategory>
     <PreferenceCategory
-            android:title="Day Night Cycle">
+            android:title="Day/Night Cycle">
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Time Cycle" android:key="swCycleConfig"
                 android:summary="Enabled separate configurations for day and night"/>
+        <SwitchPreference
+                android:defaultValue="true"
+                android:title="Sync Wallpapers" android:key="swSyncNightWallpaper"
+                android:summary="Set Homescreen and Lockscreen to the same image"/>
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Alternate Wallpapers" android:key="swAlternateNightWallpaper"
+                android:summary="When Sync Wallpapers is enabled\nAlternate between homescreen and lockscreen wallpapers"/>
         <ListPreference
                 android:dialogTitle="Daytime"
                 android:entries="@array/settingsClockTimeNames"
@@ -75,27 +97,17 @@
                 android:title="End of Day"/>
     </PreferenceCategory>
     <PreferenceCategory
-            android:title="Request Options">
+            android:title="Advanced Options">
         <EditTextPreference
                 android:defaultValue="seq.moe"
                 android:selectAllOnFocus="true"
                 android:singleLine="true"
                 android:title="Server" android:key="etServerName"
-                android:summary="Hostname of the Sequenzia Server (Public or Private)"/>
-        <EditTextPreference
-                android:defaultValue="Untitled"
-                android:selectAllOnFocus="true"
-                android:singleLine="true"
-                android:title="Device Name" android:key="etDisplayName"
-                android:summary="Name that will display in history"/>
-        <ListPreference
-                android:dialogTitle="Image Count"
-                android:entries="@array/settingsImageCountNames"
-                android:entryValues="@array/settingsImageCountValues"
-                android:key="ltImageCount"
-                android:summary="Download these many images for offline access"
-                android:defaultValue="5"
-                android:title="Number of Images"/>
+                android:summary="Hostname (with port if needed) of the Sequenzia Server (Public or Private)"/>
+        <SwitchPreference
+                android:defaultValue="true"
+                android:title="Use HTTPS" android:key="swHTTPS"
+                android:summary="Use Encrypted Connection, Requires valid SSL certificate (Only use this for local installs)"/>
         <SwitchPreference
                 android:defaultValue="false"
                 android:title="Force Center Alignment" android:key="swCenter"
