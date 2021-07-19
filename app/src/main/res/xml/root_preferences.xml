@@ -33,6 +33,10 @@
                 android:defaultValue="false"
                 android:title="Enable Homescreen" android:key="swEnableWallpaper"
                 android:summary="Change Homescreen Wallpaper"/>
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Enable Homescreen (Night)" android:key="swEnableNightWallpaper"
+                android:summary="Use Night Images for Homescreen Wallpaper"/>
         <ListPreference
                 android:dialogTitle="Homescreen Lifetime"
                 android:entries="@array/settingsRefreshTimeNames"
@@ -56,6 +60,10 @@
                 android:defaultValue="false"
                 android:title="Enable Lockscreen" android:key="swEnableLockscreen"
                 android:summary="Change Lockscreen Wallpaper"/>
+        <SwitchPreference
+                android:defaultValue="false"
+                android:title="Enable Lockscreen (Night)" android:key="swEnableNightLockscreen"
+                android:summary="Use Night Images for Lockscreen Wallpaper"/>
         <ListPreference
                 android:dialogTitle="Lockscreen Lifetime"
                 android:entries="@array/settingsRefreshTimeNames"

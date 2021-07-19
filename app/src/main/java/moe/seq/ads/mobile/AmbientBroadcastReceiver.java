@@ -46,8 +46,8 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
         boolean timeSelect = (enableTimeCycle && (dayTimeEnd <= currentHour || currentHour < dayTimeStart));
 
         final boolean syncWallpapers = prefs.getBoolean(String.format("swSync%sWallpaper", (timeSelect) ? "Night" : ""), true);
-        final boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
-        final boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
+        final boolean enableLockscreen = prefs.getBoolean(String.format("swEnable%sLockscreen", (timeSelect) ? "Night" : ""), false);
+        final boolean enableWallpaper = prefs.getBoolean(String.format("swEnable%sWallpaper", (timeSelect) ? "Night" : ""), false);
 
         switch (intent.getAction()) {
             case Intent.ACTION_TIME_CHANGED:
@@ -313,7 +313,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                     case "NEXT_IMAGE":
                         boolean finalTimeSelect3 = (index != -1) ? (index == 1) : timeSelect;
                         if (imageSelection == -1) {
-                            if (prefs.getBoolean("swEnableWallpaper", false)) {
+                            if (prefs.getBoolean(String.format("swEnable%sWallpaper", (finalTimeSelect3) ? "Night" : ""), false)) {
                                 ambientDataManager.nextImage(true, finalTimeSelect3, true, new AmbientDataManager.NextImageResponse() {
                                     @Override
                                     public void onError(String message) {
@@ -327,7 +327,7 @@ public class AmbientBroadcastReceiver extends BroadcastReceiver {
                                     }
                                 });
                             }
-                            if (prefs.getBoolean("swEnableLockscreen", false) && !prefs.getBoolean(String.format("swSync%sWallpaper", (finalTimeSelect3) ? "Night" : ""), true)) {
+                            if (prefs.getBoolean(String.format("swEnable%sLockscreen", (finalTimeSelect3) ? "Night" : ""), false) && !prefs.getBoolean(String.format("swSync%sWallpaper", (finalTimeSelect3) ? "Night" : ""), true)) {
                                 ambientDataManager.nextImage(true, finalTimeSelect3, false, new AmbientDataManager.NextImageResponse() {
                                     @Override
                                     public void onError(String message) {

@@ -241,8 +241,8 @@ public class AmbientDataManager {
     public void ambientRefreshRequest (boolean timeSelect, boolean changeImage, AmbientRefreshResponse completed) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean syncWallpapers = prefs.getBoolean(String.format("swSync%sWallpaper", (timeSelect) ? "Night" : ""), true);
-        boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
-        boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
+        boolean enableLockscreen = prefs.getBoolean(String.format("swEnable%sLockscreen", (timeSelect) ? "Night" : ""), false);
+        boolean enableWallpaper = prefs.getBoolean(String.format("swEnable%sWallpaper", (timeSelect) ? "Night" : ""), false);
         if (syncWallpapers && (enableLockscreen || enableWallpaper)) {
             ambientRefresh(true, timeSelect, new AmbientDataManager.AmbientRefreshRequest() {
                 @Override
@@ -673,8 +673,8 @@ public class AmbientDataManager {
     public void updateNotification(Boolean imageSelection) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean syncWallpapers = prefs.getBoolean(String.format("swSync%sWallpaper", (lastTimeSelect) ? "Night" : ""), true);
-        final boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
-        final boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
+        final boolean enableLockscreen = prefs.getBoolean(String.format("swEnable%sLockscreen", (lastTimeSelect) ? "Night" : ""), false);
+        final boolean enableWallpaper = prefs.getBoolean(String.format("swEnable%sWallpaper", (lastTimeSelect) ? "Night" : ""), false);
 
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         assert manager != null;

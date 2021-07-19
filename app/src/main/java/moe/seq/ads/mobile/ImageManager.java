@@ -42,8 +42,8 @@ public class ImageManager {
             try {
                 int displaySelect;
                 if (prefs.getBoolean(String.format("swSync%sWallpaper", (timeSelect) ? "Night" : ""), true)) {
-                    boolean enableLockscreen = prefs.getBoolean("swEnableLockscreen", false);
-                    boolean enableWallpaper = prefs.getBoolean("swEnableWallpaper", false);
+                    boolean enableLockscreen = prefs.getBoolean(String.format("swEnable%sLockscreen", (timeSelect) ? "Night" : ""), false);
+                    boolean enableWallpaper = prefs.getBoolean(String.format("swEnable%sWallpaper", (timeSelect) ? "Night" : ""), false);
                     boolean alternateWallpapers = prefs.getBoolean(String.format("swAlternate%sWallpaper", (timeSelect) ? "Night" : ""), false);
                     displaySelect = 0;
                     if (alternateWallpapers) {
